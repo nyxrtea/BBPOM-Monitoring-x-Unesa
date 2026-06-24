@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload Data — BPOM Monitor</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+    --primary:#1a56db; --primary-dark:#1e429f; --green:#0e9f6e;
+    --ink:#111827; --muted:#6b7280; --border:#e5e7eb; --bg:#f6f8fb;
+}
+*{box-sizing:border-box}
+body{
+    margin:0; background:var(--bg); font-family:'Inter',sans-serif;
+    min-height:100vh; display:flex; flex-direction:column;
+}
+
+/* ── Header ── */
+.wz-header{
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    padding:38px 20px 80px; text-align:center; position:relative; overflow:hidden;
+}
+.wz-header::before{
+    content:''; position:absolute; inset:0;
+    background:radial-gradient(circle at 80% 0%, rgba(255,255,255,.1), transparent 55%),
+               radial-gradient(circle at 10% 100%, rgba(255,255,255,.06), transparent 50%);
+}
+.wz-header-icon{
+    width:58px; height:58px; border-radius:16px; background:rgba(255,255,255,.15);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 14px;
+    font-size:27px; color:#fff; position:relative; z-index:1;
+}
+.wz-header h1{ color:#fff; font-size:23px; font-weight:800; margin:0 0 7px; position:relative; z-index:1; }
+.wz-header p{ color:rgba(255,255,255,.78); font-size:13.5px; margin:0; position:relative; z-index:1; }
+
+/* mini stat row di header */
+.header-stats{
+    display:flex; justify-content:center; gap:28px; margin-top:22px; position:relative; z-index:1; flex-wrap:wrap;
+}
+.h-stat{ text-align:center; }
+.h-stat-val{ color:#fff; font-size:18px; font-weight:800; line-height:1.1; }
+.h-stat-lbl{ color:rgba(255,255,255,.65); font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; margin-top:2px; }
+.h-stat-divider{ width:1px; background:rgba(255,255,255,.2); }
+
+/* ── Content wrap ── */
+.wz-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; padding:0 20px 50px; margin-top:-56px; position:relative; z-index:2; }
+.wz-card{
+    background:#fff; border-radius:20px; box-shadow:0 24px 56px rgba(17,24,39,.13);
+    width:100%; max-width:960px; padding:36px 32px;
+}
+
+.section-label{
+    display:flex; align-items:center; gap:10px; margin-bottom:20px;
+}
+.section-label-line{ flex:1; height:1px; background:var(--border); }
+.section-label-text{ font-size:11.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; white-space:nowrap; }
+
+.choice-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media (max-width:760px){ .choice-grid{ grid-template-columns:1fr; } }
+
+/* ── Choice card — sekarang lebih "berisi" ── */
+.choice-card{
+    border:1.5px solid var(--border); border-radius:18px; padding:0;
+    text-align:left; text-decoration:none; color:inherit; display:block;
+    transition:all .22s cubic-bezier(.2,.8,.2,1); position:relative; overflow:hidden;
+}
+.choice-card:hover{ transform:translateY(-5px); text-decoration:none; color:inherit; }
+.choice-card.green:hover{ border-color:var(--green); box-shadow:0 16px 36px rgba(14,159,110,.16); }
+.choice-card.blue:hover{ border-color:var(--primary); box-shadow:0 16px 36px rgba(26,86,219,.16); }
+
+/* top banner berwarna dalam card */
+.choice-banner{
+    padding:22px 24px 18px; position:relative; overflow:hidden;
+}
+.choice-card.green .choice-banner{ background:linear-gradient(135deg,#f0fdf4,#fff); }
+.choice-card.blue  .choice-banner{ background:linear-gradient(135deg,#eff6ff,#fff); }
+.choice-banner::after{
+    content:''; position:absolute; top:-30px; right:-30px; width:110px; height:110px;
+    border-radius:50%; opacity:.5;
+}
+.choice-card.green .choice-banner::after{ background:radial-gradient(circle,#bbf7d0,transparent 70%); }
+.choice-card.blue  .choice-banner::after{ background:radial-gradient(circle,#bfdbfe,transparent 70%); }
+
+.choice-icon-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; position:relative; z-index:1; }
+.choice-icon{
+    width:54px; height:54px; border-radius:14px; display:flex; align-items:center;
+    justify-content:center; font-size:24px; flex-shrink:0; transition:transform .22s;
+}
+.choice-card:hover .choice-icon{ transform:scale(1.08) rotate(-3deg); }
+.choice-card.green .choice-icon{ background:var(--green); color:#fff; }
+.choice-card.blue  .choice-icon{ background:var(--primary); color:#fff; }
+
+.choice-badge{
+    display:inline-flex; align-items:center; gap:5px; padding:6px 13px;
+    border-radius:99px; font-size:11px; font-weight:700; flex-shrink:0; white-space:nowrap;
+}
+.choice-card.green .choice-badge{ background:#dcfce7; color:#15803d; }
+.choice-card.blue  .choice-badge{ background:#dbeafe; color:#1d4ed8; }
+
+.choice-title{ font-size:16.5px; font-weight:800; color:var(--ink); margin-top:14px; position:relative; z-index:1; }
+.choice-desc{ font-size:12.5px; color:var(--muted); line-height:1.6; margin-top:5px; position:relative; z-index:1; }
+
+/* body card: feature list + format info */
+.choice-body{ padding:18px 24px 22px; }
+.feature-list{ list-style:none; margin:0 0 16px; padding:0; }
+.feature-list li{
+    display:flex; align-items:flex-start; gap:9px; font-size:12px; color:var(--ink);
+    padding:7px 0; border-bottom:1px solid #f3f4f6;
+}
+.feature-list li:last-child{ border-bottom:none; }
+.feature-list li i{ font-size:14px; margin-top:1px; flex-shrink:0; }
+.choice-card.green .feature-list li i{ color:var(--green); }
+.choice-card.blue  .feature-list li i{ color:var(--primary); }
+
+.format-row{
+    display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted);
+    background:#f9fafb; border:1px solid var(--border); border-radius:9px; padding:9px 12px; margin-bottom:14px;
+}
+.format-row i{ font-size:13px; flex-shrink:0; }
+.format-row code{ background:#fff; border:1px solid var(--border); padding:1px 6px; border-radius:5px; font-size:10.5px; font-weight:700; color:var(--ink); }
+
+.choice-cta{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:13px; font-weight:700; padding-top:4px;
+}
+.choice-card.green .choice-cta{ color:var(--green); }
+.choice-card.blue  .choice-cta{ color:var(--primary); }
+.choice-cta i{ transition:transform .22s; }
+.choice-card:hover .choice-cta i{ transform:translateX(4px); }
+
+/* ── Info strip bawah: cara kerja singkat ── */
+.howitworks{
+    margin-top:30px; padding-top:26px; border-top:1px solid var(--border);
+}
+.hiw-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+@media (max-width:700px){ .hiw-grid{ grid-template-columns:1fr; } }
+.hiw-step{ display:flex; gap:12px; align-items:flex-start; }
+.hiw-num{
+    width:30px; height:30px; border-radius:9px; background:#eff6ff; color:var(--primary);
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; flex-shrink:0;
+}
+.hiw-text strong{ display:block; font-size:12.5px; color:var(--ink); margin-bottom:2px; }
+.hiw-text span{ font-size:11.5px; color:var(--muted); line-height:1.5; }
+
+.wz-back{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    margin-top:24px; color:var(--muted); text-decoration:none; font-size:13px; font-weight:600;
+    transition:color .18s;
+}
+.wz-back:hover{ color:var(--primary); text-decoration:none; }
+</style>
+</head>
+<body>
+
+<div class="wz-header">
+    <div class="wz-header-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
+    <h1>Upload Data</h1>
+    <p>Pilih jenis data yang ingin Anda unggah ke sistem</p>
+
+    <div class="header-stats">
+        <div class="h-stat">
+            <div class="h-stat-val">2</div>
+            <div class="h-stat-lbl">Jenis Upload</div>
+        </div>
+        <div class="h-stat-divider"></div>
+        <div class="h-stat">
+            <div class="h-stat-val">Auto</div>
+            <div class="h-stat-lbl">Cleaning &amp; Validasi</div>
+        </div>
+        <div class="h-stat-divider"></div>
+        <div class="h-stat">
+            <div class="h-stat-val">CSV/XLSX</div>
+            <div class="h-stat-lbl">Format Didukung</div>
+        </div>
+    </div>
+</div>
+
+<div class="wz-wrap">
+    <div class="wz-card">
+
+        <div class="section-label">
+            <span class="section-label-text">Pilih Jenis Data</span>
+            <div class="section-label-line"></div>
+        </div>
+
+        <div class="choice-grid">
+
+            <!-- ── Card 1: Data Distribusi Obat ── -->
+            <a href="{{ url_for('upload.upload_data_obat') }}" class="choice-card green">
+
+                <div class="choice-banner">
+                    <div class="choice-icon-row">
+                        <div class="choice-icon"><i class="bi bi-capsule-pill"></i></div>
+                        <span class="choice-badge"><i class="bi bi-magic"></i> Auto Cleaning</span>
+                    </div>
+                    <div class="choice-title">Data Distribusi Obat</div>
+                    <div class="choice-desc">
+                        Upload file CSV transaksi distribusi obat untuk diproses
+                        otomatis sebelum disimpan ke database.
+                    </div>
+                </div>
+
+                <div class="choice-body">
+                    <ul class="feature-list">
+                        <li><i class="bi bi-check-circle-fill"></i> Deteksi &amp; hapus data duplikat otomatis</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Klasifikasi jenis sarana &amp; kategori obat</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Preview hasil sebelum disimpan permanen</li>
+                    </ul>
+                    <div class="format-row">
+                        <i class="bi bi-filetype-csv"></i>
+                        Format: <code>.csv</code> &nbsp;·&nbsp; Maks. 50MB
+                    </div>
+                    <div class="choice-cta">
+                        Mulai Upload
+                        <i class="bi bi-arrow-right"></i>
+                    </div>
+                </div>
+
+            </a>
+
+            <!-- ── Card 2: Data Jenis Sarana ── -->
+            <a href="{{ url_for('upload.upload_jenis_sarana') }}" class="choice-card blue">
+
+                <div class="choice-banner">
+                    <div class="choice-icon-row">
+                        <div class="choice-icon"><i class="bi bi-hospital"></i></div>
+                        <span class="choice-badge"><i class="bi bi-database-add"></i> Update Referensi</span>
+                    </div>
+                    <div class="choice-title">Data Jenis Sarana</div>
+                    <div class="choice-desc">
+                        Upload daftar fasilitas kesehatan untuk memperbarui tabel
+                        referensi jenis sarana &amp; instansi.
+                    </div>
+                </div>
+
+                <div class="choice-body">
+                    <ul class="feature-list">
+                        <li><i class="bi bi-check-circle-fill"></i> Validasi kolom wajib secara otomatis</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Insert data baru &amp; update data lama</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Langsung tersimpan tanpa tahap review</li>
+                    </ul>
+                    <div class="format-row">
+                        <i class="bi bi-file-earmark-spreadsheet"></i>
+                        Format: <code>.csv</code> <code>.xlsx</code> <code>.xls</code> &nbsp;·&nbsp; Maks. 50MB
+                    </div>
+                    <div class="choice-cta">
+                        Mulai Upload
+                        <i class="bi bi-arrow-right"></i>
+                    </div>
+                </div>
+
+            </a>
+
+        </div>
+
+        <!-- ── Cara kerja singkat ── -->
+        <div class="howitworks">
+            <div class="section-label">
+                <span class="section-label-text">Cara Kerja</span>
+                <div class="section-label-line"></div>
+            </div>
+            <div class="hiw-grid">
+                <div class="hiw-step">
+                    <div class="hiw-num">1</div>
+                    <div class="hiw-text">
+                        <strong>Pilih &amp; Upload File</strong>
+                        <span>Pilih jenis data lalu unggah file sesuai format yang didukung.</span>
+                    </div>
+                </div>
+                <div class="hiw-step">
+                    <div class="hiw-num">2</div>
+                    <div class="hiw-text">
+                        <strong>Sistem Memproses</strong>
+                        <span>Data dibersihkan, divalidasi, dan diklasifikasikan otomatis.</span>
+                    </div>
+                </div>
+                <div class="hiw-step">
+                    <div class="hiw-num">3</div>
+                    <div class="hiw-text">
+                        <strong>Tinjau &amp; Simpan</strong>
+                        <span>Periksa hasil ringkasan, lalu simpan ke database bila sesuai.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <a href="/dashboard" class="wz-back">
+            <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
+        </a>
+
+    </div>
+</div>
+
+</body>
+</html>

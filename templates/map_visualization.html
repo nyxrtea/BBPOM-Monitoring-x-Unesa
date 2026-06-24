@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% block title %}Peta Distribusi — BPOM Monitor{% endblock %}
+
+{% block topbar_title %}
+<i class="bi bi-map-fill me-2 text-primary"></i>Peta Distribusi Obat BBPOM Surabaya 
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+/* ── Layout ── */
+.map-wrapper {
+  display: flex; gap: 14px; height: calc(100vh - 100px);
+}
+
+/* ── Sidebar kiri ── */
+.map-sidebar {
+  width: 290px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 12px;
+  overflow-y: auto;
+}
+.map-sidebar::-webkit-scrollbar { width: 3px; }
+.map-sidebar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+
+/* ── Cards ── */
+.mc {
+  background: #fff; border-radius: 12px;
+  border: 1px solid #e5e7eb; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  overflow: hidden;
+}
+.mc-hd {
+  padding: 11px 14px; border-bottom: 1px solid #f3f4f6;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.mc-title { font-size: 12.5px; font-weight: 700; color: #111827; }
+.mc-sub   { font-size: 10.5px; color: #9ca3af; }
+.mc-body  { padding: 12px 14px; }
+
+/* ── KPI mini ── */
+.kpi-mini { display: flex; gap: 10px; }
+.kpi-m {
+  flex: 1; background: #f9fafb; border-radius: 10px;
+  padding: 10px 12px; border: 1px solid #e5e7eb;
+}
+.kpi-m-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .4px; }
+.kpi-m-value { font-size: 20px; font-weight: 800; color: #111827; line-height: 1.2; margin-top: 3px; }
+.kpi-m-sub   { font-size: 10px; color: #9ca3af; }
+
+/* ── Search box ── */
+.map-search {
+  width: 100%; padding: 7px 11px; border: 1px solid #e5e7eb;
+  border-radius: 8px; font-size: 12.5px; outline: none;
+  transition: border-color .18s; font-family: inherit;
+}
+.map-search:focus { border-color: #1a56db; }
+
+/* ── Rank list ── */
+.rank-list { display: flex; flex-direction: column; gap: 5px; }
+.rank-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: 9px;
+  border: 1px solid #e5e7eb; background: #f9fafb;
+  cursor: pointer; transition: all .18s;
+}
+.rank-item:hover   { background: #eff6ff; border-color: #bfdbfe; }
+.rank-item.active  { background: #1a56db; border-color: #1a56db; }
+.rank-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; flex-shrink: 0;
+  background: #fff; color: #1a56db;
+}
+.rank-item.active .rank-num { background: rgba(255,255,255,.2); color: #fff; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name {
+  font-size: 12px; font-weight: 600; color: #111827;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rank-item.active .rank-name { color: #fff; }
+.rank-prov { font-size: 10.5px; color: #9ca3af; }
+.rank-item.active .rank-prov { color: rgba(255,255,255,.65); }
+.rank-val  { font-size: 12px; font-weight: 700; color: #1a56db; white-space: nowrap; }
+.rank-item.active .rank-val { color: #ffd700; }
+
+/* ── Map container ── */
+.map-container {
+  flex: 1; border-radius: 14px; overflow: hidden;
+  border: 1px solid #e5e7eb; box-shadow: 0 1px 6px rgba(0,0,0,.07);
+  position: relative;
+}
+#map { width: 100%; height: 100%; }
+
+/* ── Legend ── */
+.map-legend {
+  position: absolute; bottom: 20px; right: 10px; z-index: 1000;
+  background: #fff; border-radius: 10px; padding: 12px 14px;
+  border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,.1);
+  font-size: 11.5px;
+}
+.map-legend-title { font-weight: 700; color: #111827; margin-bottom: 7px; font-size: 12px; }
+.legend-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.legend-color { width: 16px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.legend-label { color: #6b7280; }
+
+/* ── Empty state ── */
+.empty-map {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 10px; z-index: 999;
+  background: rgba(249,250,251,.92); border-radius: 14px;
+}
+.empty-map i { font-size: 3rem; color: #d1d5db; }
+.empty-map p { font-size: 13px; color: #9ca3af; }
+
+/* ── Popup ── */
+.lf-popup { font-family: 'Inter', sans-serif; font-size: 12.5px; min-width: 200px; }
+.lf-popup-title { font-weight: 700; font-size: 13.5px; color: #111827; margin-bottom: 6px; }
+.lf-popup-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid #f3f4f6; }
+.lf-popup-row:last-child { border: none; }
+.lf-popup-label { color: #6b7280; }
+.lf-popup-val   { font-weight: 700; color: #111827; }
+.lf-popup-cats  { margin-top: 8px; }
+.lf-popup-cats-title { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+.lf-cat-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; }
+.lf-cat-name { width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #374151; }
+.lf-cat-track { flex: 1; height: 5px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+.lf-cat-fill  { height: 100%; background: #1a56db; border-radius: 99px; }
+.lf-cat-num   { width: 55px; text-align: right; color: #6b7280; }
+
+@media (max-width: 900px) {
+  .map-wrapper { flex-direction: column; height: auto; }
+  .map-sidebar { width: 100%; overflow-y: visible; }
+  .map-container { height: 60vh; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="map-wrapper">
+
+  <!-- ── SIDEBAR ───────────────────────────────────────── -->
+  <div class="map-sidebar">
+
+    <!-- KPI mini -->
+    <div class="mc">
+      <div class="mc-body">
+        <div class="kpi-mini">
+          <div class="kpi-m">
+            <div class="kpi-m-label">Total Distribusi</div>
+            <div class="kpi-m-value" id="kpiTotal">
+              {{ "{:,.0f}".format(total_all) if total_all else "0" }}
+            </div>
+            <div class="kpi-m-sub">Pcs</div>
+          </div>
+          <div class="kpi-m">
+            <div class="kpi-m-label">Kab/Kota</div>
+            <div class="kpi-m-value">{{ kota_count }}</div>
+            <div class="kpi-m-sub">Wilayah</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rank list -->
+    <div class="mc" style="flex:1;display:flex;flex-direction:column">
+      <div class="mc-hd">
+        <div>
+          <div class="mc-title">🏆 Top Kota/Kab</div>
+          <div class="mc-sub">Volume distribusi tertinggi</div>
+        </div>
+        <span id="rankCount" style="font-size:11px;color:#9ca3af"></span>
+      </div>
+      <div class="mc-body" style="padding-bottom:6px">
+        <input class="map-search" id="searchBox" placeholder="🔍 Cari kota/kabupaten…" oninput="filterRank()">
+      </div>
+      <div class="mc-body" style="padding-top:0;flex:1;overflow-y:auto">
+        <div class="rank-list" id="rankList"></div>
+        <div id="rankEmpty" style="display:none;text-align:center;padding:20px;color:#9ca3af;font-size:12.5px">
+          <i class="bi bi-search" style="display:block;font-size:1.8rem;opacity:.2;margin-bottom:8px"></i>
+          Tidak ditemukan
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ── MAP ──────────────────────────────────────────── -->
+  <div class="map-container">
+    <div id="map"></div>
+
+    {% if not total_all or total_all == 0 %}
+    <div class="empty-map">
+      <i class="bi bi-map"></i>
+      <p>Belum ada data distribusi untuk ditampilkan</p>
+      <a href="/upload" class="btn btn-primary btn-sm">
+        <i class="bi bi-cloud-upload me-1"></i>Upload Data
+      </a>
+    </div>
+    {% endif %}
+
+<!-- Legend -->
+<div class="map-legend">
+  <div class="map-legend-title">Volume Distribusi (Pcs)</div>
+
+  <div class="legend-row">
+    <div class="legend-color" style="background:#065f46"></div>
+    <div class="legend-label">Rendah</div>
+  </div>
+
+  <div class="legend-row">
+    <div class="legend-color" style="background:#c2410c"></div>
+    <div class="legend-label">Sedang</div>
+  </div>
+
+  <div class="legend-row">
+    <div class="legend-color" style="background:#e02424"></div>
+    <div class="legend-label">Tinggi</div>
+  </div>
+</div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ── Data dari Flask ─────────────────────────────────────────
+const KOTA_MAP  = {{ kota_map  | safe }};
+const KOTA_LIST = {{ kota_list | safe }};
+
+// ── Inisialisasi peta ───────────────────────────────────────
+const map = L.map('map', {
+  center: [-2.5, 118],
+  zoom: 5,
+  zoomControl: true,
+  attributionControl: false,
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 18,
+}).addTo(map);
+
+// ── Warna choropleth ────────────────────────────────────────
+const totalValues = Object.values(KOTA_MAP).map(d => d.total);
+const maxTotal    = totalValues.length ? Math.max(...totalValues) : 1;
+
+function getColor(val) {
+  const t = val / maxTotal;
+
+  if (t > 0.70) return '#e02424'; // merah tua
+  if (t > 0.35) return '#c2410c'; // kuning
+  if (t > 0)    return '#065f46'; // hijau
+
+  return '#e5e7eb'; // abu-abu
+}
+
+// ── Format angka ────────────────────────────────────────────
+function fmtNum(n) {
+  return n >= 1_000_000
+    ? (n / 1_000_000).toFixed(1) + ' Jt'
+    : n >= 1_000
+    ? (n / 1_000).toFixed(1) + ' Rb'
+    : n.toLocaleString('id-ID');
+}
+
+// ── Highlight / focus state ─────────────────────────────────
+let currentLayer  = null;
+let currentKota   = null;
+
+// ── Build popup HTML ────────────────────────────────────────
+function buildPopup(kota, data) {
+  const pct   = maxTotal > 0 ? (data.total / maxTotal * 100).toFixed(1) : 0;
+  const cats  = data.top_kategori || [];
+  const catMax = cats.length ? Math.max(...cats.map(c => c.jumlah)) : 1;
+
+  let catHtml = '';
+  if (cats.length) {
+    catHtml = `<div class="lf-popup-cats">
+      <div class="lf-popup-cats-title">Top Kategori Obat</div>
+      ${cats.map(c => `
+        <div class="lf-cat-bar">
+          <div class="lf-cat-name" title="${c.label}">${c.label.length > 14 ? c.label.slice(0,12)+'…' : c.label}</div>
+          <div class="lf-cat-track">
+            <div class="lf-cat-fill" style="width:${catMax > 0 ? (c.jumlah/catMax*100).toFixed(0) : 0}%"></div>
+          </div>
+          <div class="lf-cat-num">${fmtNum(c.jumlah)}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  return `<div class="lf-popup">
+    <div class="lf-popup-title">${kota}</div>
+    <div class="lf-popup-row">
+      <span class="lf-popup-label">Provinsi</span>
+      <span class="lf-popup-val">${data.provinsi || '-'}</span>
+    </div>
+    <div class="lf-popup-row">
+      <span class="lf-popup-label">Total Distribusi</span>
+      <span class="lf-popup-val">${data.total.toLocaleString('id-ID')} Pcs</span>
+    </div>
+    <div class="lf-popup-row">
+      <span class="lf-popup-label">Transaksi</span>
+      <span class="lf-popup-val">${data.count.toLocaleString('id-ID')}</span>
+    </div>
+    <div class="lf-popup-row">
+      <span class="lf-popup-label">Proporsi</span>
+      <span class="lf-popup-val">${pct}%</span>
+    </div>
+    ${catHtml}
+  </div>`;
+}
+
+// ── Render sidebar rank list ─────────────────────────────────
+const medals = ['🥇','🥈','🥉'];
+
+function renderRankList(list) {
+  const container = document.getElementById('rankList');
+  const counter   = document.getElementById('rankCount');
+  container.innerHTML = '';
+  counter.textContent = `${list.length} kota`;
+
+  if (!list.length) {
+    document.getElementById('rankEmpty').style.display = 'block';
+    return;
+  }
+  document.getElementById('rankEmpty').style.display = 'none';
+
+  list.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'rank-item' + (item.kota === currentKota ? ' active' : '');
+    div.dataset.kota = item.kota;
+    div.innerHTML = `
+      <div class="rank-num">${i < 3 ? medals[i] : i + 1}</div>
+      <div class="rank-info">
+        <div class="rank-name" title="${item.kota}">${item.kota}</div>
+        <div class="rank-prov">${item.provinsi || '—'}</div>
+      </div>
+      <div class="rank-val">${fmtNum(item.total)}</div>
+    `;
+    div.addEventListener('click', () => focusKota(item.kota));
+    container.appendChild(div);
+  });
+}
+
+// ── Load GeoJSON & render choropleth ────────────────────────
+let geojsonLayer = null;
+let layerMap = {};  // WADMKK → leaflet layer
+
+fetch('/api/geojson/kota')
+  .then(r => r.json())
+  .then(geojson => {
+    geojsonLayer = L.geoJSON(geojson, {
+      style: feature => {
+        const kota = (feature.properties.WADMKK || '').toUpperCase();
+        const data = KOTA_MAP[kota];
+        return {
+          fillColor:   data ? getColor(data.total) : '#f3f4f6',
+          fillOpacity: data ? 0.75 : 0.2,
+          color:       '#fff',
+          weight:      1,
+          opacity:     0.7,
+        };
+      },
+      onEachFeature: (feature, layer) => {
+        const kota = (feature.properties.WADMKK || '').toUpperCase();
+        layerMap[kota] = layer;
+        const data = KOTA_MAP[kota];
+
+        if (data) {
+          layer.bindPopup(buildPopup(kota, data), { maxWidth: 280, className: 'lf-custom-popup' });
+        }
+
+        layer.on({
+          mouseover(e) {
+            if (kota !== currentKota) {
+              e.target.setStyle({
+                weight: 2.5,
+                color: '#111827',
+                fillOpacity: 0.9
+              });
+            }
+          },
+          mouseout(e) {
+            if (kota !== currentKota) {
+              geojsonLayer.resetStyle(e.target);
+            }
+          },
+          click() { focusKota(kota); },
+        });
+      },
+    }).addTo(map);
+
+    // Render rank list setelah geojson siap
+    renderRankList(KOTA_LIST);
+  })
+  .catch(err => {
+    console.warn('GeoJSON gagal dimuat:', err);
+    renderRankList(KOTA_LIST);
+  });
+
+// ── Focus ke kota tertentu ───────────────────────────────────
+function focusKota(kota) {
+  // Deactivate previous
+  if (currentLayer) {
+    try {
+      geojsonLayer && geojsonLayer.resetStyle(currentLayer);
+    } catch (e) {}
+  }
+
+  // Deactivate rank item
+  document.querySelectorAll('.rank-item')
+    .forEach(el => el.classList.remove('active'));
+
+  if (kota === currentKota) {
+    currentKota = null;
+    currentLayer = null;
+    return;
+  }
+
+  currentKota = kota;
+  const layer = layerMap[kota];
+
+  if (layer) {
+    const data = KOTA_MAP[kota];
+
+    // Pertahankan warna asli berdasarkan volume distribusi
+    layer.setStyle({
+      weight: 4,
+      color: '#111827',
+      fillColor: getColor(data ? data.total : 0),
+      fillOpacity: 0.95,
+      opacity: 1
+    });
+
+    currentLayer = layer;
+
+    if (data) {
+      layer.bindPopup(
+        buildPopup(kota, data),
+        { maxWidth: 280 }
+      ).openPopup();
+    }
+
+    try {
+      map.fitBounds(layer.getBounds(), {
+        padding: [40, 40],
+        maxZoom: 10
+      });
+    } catch (e) {}
+  }
+
+  // Activate rank item
+  const el = document.querySelector(
+    `.rank-item[data-kota="${kota}"]`
+  );
+
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest'
+    });
+  }
+}
+
+// ── Search / filter rank list ────────────────────────────────
+function filterRank() {
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  if (!q) {
+    renderRankList(KOTA_LIST);
+    return;
+  }
+  const filtered = KOTA_LIST.filter(item =>
+    item.kota.toLowerCase().includes(q) ||
+    (item.provinsi || '').toLowerCase().includes(q)
+  );
+  renderRankList(filtered);
+}
+
+// ── Initial render ───────────────────────────────────────────
+renderRankList(KOTA_LIST);
+</script>
+{% endblock %}

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hasil Upload Jenis Sarana — BPOM Monitor</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+    --primary:#1a56db; --primary-dark:#1e429f; --green:#0e9f6e;
+    --ink:#111827; --muted:#6b7280; --border:#e5e7eb; --bg:#f6f8fb;
+    --danger:#e02424; --amber:#d97706;
+}
+*{box-sizing:border-box}
+body{
+    margin:0; background:var(--bg); font-family:'Inter',sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; padding-bottom:40px;
+}
+
+/* ── Header + stepper ── */
+.wz-header{
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    padding:30px 20px 64px; text-align:center; position:relative; overflow:hidden;
+}
+.wz-header::before{
+    content:''; position:absolute; inset:0;
+    background:radial-gradient(circle at 80% 0%, rgba(255,255,255,.08), transparent 60%);
+}
+.wz-header-icon{
+    width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.15);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 12px;
+    font-size:24px; color:#fff; position:relative; z-index:1;
+}
+.wz-header h1{ color:#fff; font-size:20px; font-weight:800; margin:0 0 5px; position:relative; z-index:1; }
+.wz-header p{ color:rgba(255,255,255,.75); font-size:13px; margin:0; position:relative; z-index:1; }
+
+.stepper{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:20px; position:relative; z-index:1; }
+.step{ display:flex; align-items:center; gap:8px; }
+.step-dot{ width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; }
+.step.done .step-dot{ background:#fff; color:var(--green); }
+.step.active .step-dot{ background:#fff; color:var(--primary); }
+.step-label{ font-size:11.5px; font-weight:700; color:rgba(255,255,255,.85); }
+.step-line{ width:34px; height:2px; background:#fff; }
+
+/* ── Content ── */
+.wz-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; padding:0 20px; margin-top:-44px; position:relative; z-index:2; }
+.wz-card{
+    background:#fff; border-radius:18px; box-shadow:0 20px 50px rgba(17,24,39,.12);
+    width:100%; max-width:880px; padding:30px 28px; margin-bottom:18px;
+}
+
+.filename-row{
+    display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);
+    margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid var(--border);
+}
+.filename-row i{ color:var(--primary); font-size:15px; }
+.filename-row b{ color:var(--ink); }
+
+/* ── Validation chips ── */
+.sec-title{ font-size:14px; font-weight:800; color:var(--ink); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+.sec-title i{ color:var(--primary); }
+.val-item{
+    display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:10px;
+    margin-bottom:8px; font-size:12.5px;
+}
+.val-item:last-child{ margin-bottom:0; }
+.val-ok{ background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+.val-err{ background:#fff5f5; border:1px solid #fecaca; color:#991b1b; }
+.val-warn{ background:#fff7ed; border:1px solid #fed7aa; color:#92400e; }
+.val-item i{ font-size:16px; flex-shrink:0; }
+.val-item code{ background:rgba(0,0,0,.06); padding:2px 7px; border-radius:5px; font-size:11.5px; }
+
+/* ── KPI cards ── */
+.kpi-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:22px 0; }
+@media (max-width:760px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+.kpi-card{
+    background:#f9fafb; border:1px solid var(--border); border-radius:13px;
+    padding:16px 14px; position:relative; overflow:hidden;
+}
+.kpi-card::before{ content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:13px 13px 0 0; }
+.kpi-card.c-blue::before{ background:var(--primary); }
+.kpi-card.c-green::before{ background:var(--green); }
+.kpi-card.c-amber::before{ background:var(--amber); }
+.kpi-card.c-red::before{ background:var(--danger); }
+.kpi-label{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+.kpi-value{ font-size:24px; font-weight:800; color:var(--ink); margin-top:5px; line-height:1.1; }
+.kpi-sub{ font-size:11px; color:var(--muted); margin-top:2px; }
+
+.db-total-row{
+    display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted);
+    background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px 16px; margin-bottom:8px;
+}
+.db-total-row i{ color:var(--primary); font-size:16px; }
+.db-total-row b{ color:var(--ink); }
+
+/* ── Tables ── */
+.tbl-wrap{ border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+table.dtable{ width:100%; border-collapse:collapse; font-size:12.5px; }
+table.dtable thead{ background:#f9fafb; }
+table.dtable th{
+    padding:11px 14px; text-align:left; font-weight:700; color:var(--muted);
+    text-transform:uppercase; font-size:10.5px; letter-spacing:.3px; border-bottom:1px solid var(--border);
+}
+table.dtable td{ padding:11px 14px; border-bottom:1px solid #f3f4f6; color:var(--ink); }
+table.dtable tbody tr:last-child td{ border-bottom:none; }
+table.dtable tbody tr:hover{ background:#f9fafb; }
+table.dtable td.num{ font-weight:700; color:var(--primary); text-align:right; }
+
+.pct-bar-track{ height:5px; border-radius:99px; background:#e5e7eb; overflow:hidden; margin-top:4px; }
+.pct-bar-fill{ height:100%; border-radius:99px; background:var(--primary); }
+
+.preview-scroll{ overflow-x:auto; border-radius:12px; border:1px solid var(--border); }
+
+/* ── Action buttons ── */
+.action-buttons{ display:flex; justify-content:center; gap:14px; flex-wrap:wrap; margin-top:8px; }
+.btn-action{
+    display:inline-flex; align-items:center; gap:8px; min-width:190px; justify-content:center;
+    padding:13px 26px; border-radius:11px; border:none; font-family:inherit;
+    font-size:13.5px; font-weight:700; cursor:pointer; text-decoration:none; transition:all .2s;
+}
+.btn-action:hover{ transform:translateY(-2px); text-decoration:none; }
+.btn-primary-action{ background:var(--primary); color:#fff; }
+.btn-primary-action:hover{ background:var(--primary-dark); box-shadow:0 8px 22px rgba(26,86,219,.3); color:#fff; }
+.btn-outline-action{ background:#fff; color:var(--ink); border:1.5px solid var(--border); }
+.btn-outline-action:hover{ background:#f9fafb; box-shadow:0 8px 22px rgba(17,24,39,.08); color:var(--ink); }
+.btn-ghost-action{ background:#fff; color:var(--green); border:1.5px solid #bbf7d0; }
+.btn-ghost-action:hover{ background:#f0fdf4; box-shadow:0 8px 22px rgba(14,159,110,.15); color:var(--green); }
+</style>
+</head>
+<body>
+
+<div class="wz-header">
+    <div class="wz-header-icon"><i class="bi bi-check2-circle"></i></div>
+    <h1>Upload Berhasil Diproses</h1>
+    <p>Tabel referensi jenis sarana telah diperbarui</p>
+
+    <div class="stepper">
+        <div class="step done"><div class="step-dot"><i class="bi bi-check-lg"></i></div><span class="step-label">Upload</span></div>
+        <div class="step-line"></div>
+        <div class="step active"><div class="step-dot">2</div><span class="step-label">Selesai</span></div>
+    </div>
+</div>
+
+<div class="wz-wrap">
+<div class="wz-card">
+
+    <div class="filename-row">
+        <i class="bi bi-file-earmark-text-fill"></i>
+        File diproses: <b>{{ result.filename }}</b>
+    </div>
+
+    <!-- ── Validasi Kolom ── -->
+    <div class="sec-title"><i class="bi bi-clipboard2-check-fill"></i> Validasi Kolom</div>
+
+    <div class="val-item {{ 'val-ok' if result.validation.jenis_sarana else 'val-err' }}">
+        <i class="bi bi-{{ 'check-circle-fill' if result.validation.jenis_sarana else 'x-circle-fill' }}"></i>
+        Kolom <code>jenis_sarana</code> — {{ 'ditemukan' if result.validation.jenis_sarana else 'tidak ditemukan' }}
+    </div>
+    <div class="val-item {{ 'val-ok' if result.validation.nama_tujuan_penyaluran else 'val-err' }}">
+        <i class="bi bi-{{ 'check-circle-fill' if result.validation.nama_tujuan_penyaluran else 'x-circle-fill' }}"></i>
+        Kolom <code>nama_tujuan_penyaluran</code> — {{ 'ditemukan' if result.validation.nama_tujuan_penyaluran else 'tidak ditemukan' }}
+    </div>
+
+    {% if result.validation.empty_jenis_sarana > 0 %}
+    <div class="val-item val-warn">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        {{ "{:,}".format(result.validation.empty_jenis_sarana) }} baris dengan <code>jenis_sarana</code> kosong — dilewati
+    </div>
+    {% endif %}
+    {% if result.validation.empty_nama > 0 %}
+    <div class="val-item val-warn">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        {{ "{:,}".format(result.validation.empty_nama) }} baris dengan <code>nama_tujuan_penyaluran</code> kosong — dilewati
+    </div>
+    {% endif %}
+
+    <!-- ── KPI ── -->
+    <div class="sec-title" style="margin-top:26px"><i class="bi bi-bar-chart-fill"></i> Ringkasan Hasil</div>
+    <div class="kpi-grid">
+        <div class="kpi-card c-blue">
+            <div class="kpi-label">Total Dibaca</div>
+            <div class="kpi-value">{{ "{:,}".format(result.rows_total) }}</div>
+            <div class="kpi-sub">Baris dari file</div>
+        </div>
+        <div class="kpi-card c-green">
+            <div class="kpi-label">Baru Ditambahkan</div>
+            <div class="kpi-value">{{ "{:,}".format(result.rows_inserted) }}</div>
+            <div class="kpi-sub">Entri baru</div>
+        </div>
+        <div class="kpi-card c-amber">
+            <div class="kpi-label">Diperbarui</div>
+            <div class="kpi-value">{{ "{:,}".format(result.rows_updated) }}</div>
+            <div class="kpi-sub">Entri diubah</div>
+        </div>
+        <div class="kpi-card c-red">
+            <div class="kpi-label">Dilewati</div>
+            <div class="kpi-value">{{ "{:,}".format(result.rows_skipped) }}</div>
+            <div class="kpi-sub">Data tidak valid</div>
+        </div>
+    </div>
+
+    <div class="db-total-row">
+        <i class="bi bi-database-fill"></i>
+        Total data dalam tabel <code style="background:#fff;padding:2px 7px;border-radius:5px">jenis_sarana_instansi</code>
+        sekarang: <b>{{ "{:,}".format(result.total_in_db) }}</b> entri
+    </div>
+
+    <!-- ── Distribusi Jenis Sarana ── -->
+    {% if result.sarana_dist %}
+    <div class="sec-title" style="margin-top:26px"><i class="bi bi-pie-chart-fill"></i> Distribusi Jenis Sarana (dari File)</div>
+    <div class="tbl-wrap">
+        <table class="dtable">
+            <thead><tr><th>Jenis Sarana</th><th>Jumlah Baris</th><th>Proporsi</th></tr></thead>
+            <tbody>
+                {% for nama, jml in result.sarana_dist.items() %}
+                {% set pct = ((jml / result.rows_total) * 100) if result.rows_total > 0 else 0 %}
+                <tr>
+                    <td>{{ nama }}</td>
+                    <td class="num">{{ "{:,}".format(jml) }}</td>
+                    <td style="width:160px">
+                        {{ pct | round(1) }}%
+                        <div class="pct-bar-track"><div class="pct-bar-fill" style="width:{{ pct }}%"></div></div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- ── Preview ── -->
+    {% if result.preview %}
+    <div class="sec-title" style="margin-top:26px"><i class="bi bi-table"></i> Preview Data (5 Baris Pertama)</div>
+    <div class="preview-scroll">
+        <table class="dtable">
+            <thead><tr><th>Nama Tujuan Penyaluran</th><th>Jenis Sarana</th></tr></thead>
+            <tbody>
+                {% for row in result.preview %}
+                <tr>
+                    <td>{{ row.nama_tujuan_penyaluran }}</td>
+                    <td>{{ row.jenis_sarana }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+</div><!-- /wz-card -->
+
+<!-- ── Action Buttons ── -->
+<div class="action-buttons">
+    <a href="{{ url_for('upload.upload_jenis_sarana') }}" class="btn-action btn-primary-action">
+        <i class="bi bi-upload"></i> Upload File Lain
+    </a>
+    <a href="{{ url_for('upload.landing') }}" class="btn-action btn-outline-action">
+        <i class="bi bi-arrow-left"></i> Pilihan Upload
+    </a>
+    <a href="/dashboard" class="btn-action btn-ghost-action">
+        <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+</div>
+
+</div><!-- /wz-wrap -->
+
+</body>
+</html>

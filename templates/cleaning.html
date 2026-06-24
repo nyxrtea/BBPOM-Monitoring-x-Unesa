@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cleaning Result</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='summary.css') }}">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body>
+
+    <h1>BASE.HTML BERHASIL DIMUAT</h1>
+
+    <p>
+        Jika tulisan ini muncul berarti Flask berhasil menemukan file base.html.
+    </p>
+
+    <div class="summary-container">
+
+        <h2 class="summary-title">
+            Ringkasan Hasil Cleaning Data
+        </h2>
+
+        <!-- Summary Utama -->
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Nilai</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>Baris Sebelum Input CSV</td>
+                    <td>{{ "{:,}".format(summary.rows_before) }}</td>
+                </tr>
+
+                <tr>
+                    <td>Baris Sesudah Cleaning</td>
+                    <td>{{ "{:,}".format(summary.rows_after) }}</td>
+                </tr>
+
+                <tr>
+                    <td>Duplikat Dihapus</td>
+                    <td>{{ "{:,}".format(summary.duplicates_removed) }}</td>
+                </tr>
+
+                <tr>
+                    <td>Jenis Sarana (Unik)</td>
+                    <td>{{ summary.jenis_sarana_created }}</td>
+                </tr>
+
+                {% if summary.kategori_jenis_obat %}
+                <tr>
+                    <td>Kategori Obat</td>
+                    <td>{{ summary.kategori_jenis_obat }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+
+        <!-- Distribusi Sarana -->
+        {% if summary.sarana_distribution %}
+
+        <h3 class="summary-subtitle">
+            Distribusi Jenis Sarana
+        </h3>
+
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Jenis Sarana</th>
+                    <th>Jumlah</th>
+                    <th>Proporsi</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% set total_rows = summary.sarana_distribution.values() | sum %}
+
+                {% for nama, jumlah in summary.sarana_distribution.items() %}
+                <tr>
+                    <td>{{ nama }}</td>
+                    <td>{{ "{:,}".format(jumlah) }}</td>
+
+                    <td>
+                        {% if total_rows > 0 %}
+                            {{ ((jumlah / total_rows) * 100) | round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+
+        {% else %}
+            <p class="no-data">
+                Tidak ada data distribusi sarana.
+            </p>
+        {% endif %}
+
+
+        <!-- Preview 5 Baris Pertama -->
+
+        {% if summary.preview_data %}
+
+        <h3 class="summary-subtitle">
+            Preview Data (5 Baris Pertama)
+        </h3>
+
+        <div class="preview-scroll">
+        
+            <table class="summary-table preview-table">
+            
+                <thead>
+                    <tr>
+                        {% for col in summary.preview_data[0].keys() %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+            
+                <tbody>
+                
+                    {% for row in summary.preview_data %}
+                    <tr>
+                    
+                        {% for value in row.values() %}
+                        <td>{{ value }}</td>
+                        {% endfor %}
+                    
+                    </tr>
+                    {% endfor %}
+                
+                </tbody>
+            
+            </table>
+        
+        </div>
+
+        {% else %}
+
+        <p class="no-data">
+            Tidak ada data preview.
+        </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+
+        <!-- Download -->
+        <a href="{{ url_for('upload.download', sess_uuid=sess_uuid) }}"
+           class="btn-action btn-download">
+
+            <i class="bi bi-download"></i>
+            Download CSV Bersih
+
+        </a>
+
+
+        <!-- Save -->
+        <form method="POST"
+              action="{{ url_for('upload.save_permanent', sess_uuid=sess_uuid) }}">
+
+            <button type="submit"
+                    class="btn-action btn-save-perm"
+                    onclick="return confirm('Simpan semua data ke database secara permanen?')">
+
+                <i class="bi bi-database-add"></i>
+                Simpan ke Database
+
+            </button>
+
+        </form>
+
+
+        <!-- Discard -->
+        <form method="POST"
+              action="{{ url_for('upload.discard', sess_uuid=sess_uuid) }}">
+
+            <button type="submit"
+                    class="btn-action btn-discard"
+                    onclick="return confirm('Data akan dihapus permanen. Lanjutkan?')">
+
+                <i class="bi bi-arrow-left"></i>
+                Kembali
+
+            </button>
+
+        </form>
+
+    </div>
+
+</body>
+</html>

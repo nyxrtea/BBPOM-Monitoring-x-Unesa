@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hasil Cleaning — BPOM Monitor</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+    --primary:#1a56db; --primary-dark:#1e429f; --green:#0e9f6e;
+    --ink:#111827; --muted:#6b7280; --border:#e5e7eb; --bg:#f6f8fb;
+    --danger:#e02424; --amber:#d97706;
+}
+*{box-sizing:border-box}
+body{
+    margin:0; background:var(--bg); font-family:'Inter',sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; padding-bottom:40px;
+}
+
+/* ── Header + stepper ── */
+.wz-header{
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    padding:30px 20px 64px; text-align:center; position:relative; overflow:hidden;
+}
+.wz-header::before{
+    content:''; position:absolute; inset:0;
+    background:radial-gradient(circle at 80% 0%, rgba(255,255,255,.08), transparent 60%);
+}
+.wz-header-icon{
+    width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.15);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 12px;
+    font-size:24px; color:#fff; position:relative; z-index:1; transition:all .3s;
+}
+.wz-header h1{ color:#fff; font-size:20px; font-weight:800; margin:0 0 5px; position:relative; z-index:1; transition:all .2s; }
+.wz-header p{ color:rgba(255,255,255,.75); font-size:13px; margin:0; position:relative; z-index:1; transition:all .2s; }
+
+.stepper{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:20px; position:relative; z-index:1; }
+.step{ display:flex; align-items:center; gap:8px; }
+.step-dot{ width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; transition:all .3s; }
+.step.done .step-dot{ background:#fff; color:var(--green); }
+.step.active .step-dot{ background:#fff; color:var(--primary); }
+.step-label{ font-size:11.5px; font-weight:700; color:rgba(255,255,255,.85); }
+.step-line{ width:34px; height:2px; background:rgba(255,255,255,.4); transition:background .3s; }
+.step-line.done{ background:#fff; }
+
+/* ── Content wrap ── */
+.wz-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; padding:0 20px; margin-top:-44px; position:relative; z-index:2; }
+.wz-card{
+    background:#fff; border-radius:18px; box-shadow:0 20px 50px rgba(17,24,39,.12);
+    width:100%; max-width:920px; padding:30px 28px; margin-bottom:18px;
+}
+
+/* ── Notice banner ── */
+.notice-banner{
+    background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:13px 16px;
+    margin-bottom:22px; font-size:12.5px; color:#92400e; display:flex; align-items:flex-start; gap:10px;
+}
+.notice-banner i{ font-size:17px; flex-shrink:0; margin-top:1px; color:#d97706; }
+
+/* ── KPI cards ── */
+.kpi-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:26px; }
+@media (max-width:760px){ .kpi-grid{ grid-template-columns:repeat(2,1fr); } }
+.kpi-card{ background:#f9fafb; border:1px solid var(--border); border-radius:13px; padding:16px 14px; position:relative; overflow:hidden; }
+.kpi-card::before{ content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:13px 13px 0 0; }
+.kpi-card.c-blue::before{ background:var(--primary); }
+.kpi-card.c-green::before{ background:var(--green); }
+.kpi-card.c-red::before{ background:var(--danger); }
+.kpi-card.c-amber::before{ background:var(--amber); }
+.kpi-label{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+.kpi-value{ font-size:24px; font-weight:800; color:var(--ink); margin-top:5px; line-height:1.1; }
+.kpi-sub{ font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* ── Section ── */
+.sec-title{ font-size:14px; font-weight:800; color:var(--ink); margin:26px 0 12px; display:flex; align-items:center; gap:8px; }
+.sec-title i{ color:var(--primary); }
+
+/* ── Tables ── */
+.tbl-wrap{ border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+table.dtable{ width:100%; border-collapse:collapse; font-size:12.5px; }
+table.dtable thead{ background:#f9fafb; }
+table.dtable th{ padding:11px 14px; text-align:left; font-weight:700; color:var(--muted); text-transform:uppercase; font-size:10.5px; letter-spacing:.3px; border-bottom:1px solid var(--border); }
+table.dtable td{ padding:11px 14px; border-bottom:1px solid #f3f4f6; color:var(--ink); }
+table.dtable tbody tr:last-child td{ border-bottom:none; }
+table.dtable tbody tr:hover{ background:#f9fafb; }
+table.dtable td.num{ font-weight:700; color:var(--primary); text-align:right; }
+table.dtable td.num.danger{ color:var(--danger); }
+
+.pct-bar-track{ height:5px; border-radius:99px; background:#e5e7eb; overflow:hidden; margin-top:4px; }
+.pct-bar-fill{ height:100%; border-radius:99px; }
+
+.preview-scroll{ overflow-x:auto; border-radius:12px; border:1px solid var(--border); }
+.preview-scroll table{ min-width:900px; }
+
+.no-data{ display:flex; align-items:center; gap:8px; color:var(--green); font-weight:600; font-size:12.5px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px; }
+
+/* ── Action buttons (state awal) ── */
+.action-buttons{ display:flex; justify-content:center; gap:14px; flex-wrap:wrap; margin-top:8px; }
+.btn-action{
+    display:inline-flex; align-items:center; gap:8px; min-width:190px; justify-content:center;
+    padding:13px 26px; border-radius:11px; border:none; font-family:inherit;
+    font-size:13.5px; font-weight:700; cursor:pointer; text-decoration:none; transition:all .2s;
+}
+.btn-action:hover{ transform:translateY(-2px); text-decoration:none; }
+.btn-action:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+.btn-download{ background:var(--green); color:#fff; }
+.btn-download:hover{ background:#0b815a; box-shadow:0 8px 22px rgba(14,159,110,.3); color:#fff; }
+.btn-save-perm{ background:var(--primary); color:#fff; }
+.btn-save-perm:hover{ background:var(--primary-dark); box-shadow:0 8px 22px rgba(26,86,219,.3); }
+.btn-discard{ background:#fff; color:var(--danger); border:1.5px solid #fecaca; }
+.btn-discard:hover{ background:#fff5f5; box-shadow:0 8px 22px rgba(224,36,36,.12); }
+
+/* ════════════════════════════════════════════════════════
+   SUCCESS / STATE OVERLAY — menggantikan area konten utama
+   setelah user menyimpan, mendownload, atau memilih kembali.
+   ════════════════════════════════════════════════════════ */
+.state-overlay{ display:none; text-align:center; padding:18px 10px 6px; }
+.state-overlay.show{ display:block; animation:stateIn .35s ease; }
+@keyframes stateIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+
+.state-icon-wrap{ width:88px; height:88px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; position:relative; }
+.state-icon-wrap.success{ background:#f0fdf4; }
+.state-icon-wrap.info{ background:#eff6ff; }
+.state-icon-wrap i{ font-size:42px; }
+.state-icon-wrap.success i{ color:var(--green); }
+.state-icon-wrap.info i{ color:var(--primary); }
+
+/* ring animasi saat check muncul */
+.state-icon-wrap::after{
+    content:''; position:absolute; inset:-6px; border-radius:50%;
+    border:2px solid currentColor; opacity:0; animation:ringPulse 1s ease-out .15s;
+}
+.state-icon-wrap.success::after{ color:var(--green); }
+.state-icon-wrap.info::after{ color:var(--primary); }
+@keyframes ringPulse{ 0%{ opacity:.6; transform:scale(.85); } 100%{ opacity:0; transform:scale(1.25); } }
+
+.state-title{ font-size:18px; font-weight:800; color:var(--ink); margin-bottom:8px; }
+.state-text{ font-size:13.5px; color:var(--muted); line-height:1.7; max-width:420px; margin:0 auto 26px; }
+.state-text b{ color:var(--ink); }
+
+.state-meta{
+    display:inline-flex; align-items:center; gap:10px; background:#f9fafb; border:1px solid var(--border);
+    border-radius:10px; padding:10px 18px; font-size:12.5px; color:var(--muted); margin-bottom:24px;
+}
+.state-meta b{ color:var(--ink); }
+
+.state-actions{ display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
+
+/* progress kecil untuk auto-redirect "Kembali ke Dashboard" */
+.redirect-progress{ width:100%; max-width:240px; height:4px; background:#e5e7eb; border-radius:99px; overflow:hidden; margin:18px auto 0; }
+.redirect-progress-fill{ height:100%; background:var(--primary); border-radius:99px; width:0%; transition:width linear; }
+
+/* ── Modal ── */
+.modal-overlay{ display:none; position:fixed; inset:0; z-index:9999; background:rgba(17,24,39,.55); align-items:center; justify-content:center; }
+.modal-overlay.show{ display:flex; }
+.modal-box{ background:#fff; border-radius:16px; width:90%; max-width:380px; padding:26px 24px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.25); animation:modalPop .18s ease; }
+@keyframes modalPop{ from{ opacity:0; transform:scale(.95); } to{ opacity:1; transform:scale(1); } }
+.modal-icon{ width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 14px; }
+.modal-icon.save{ background:#eff6ff; color:var(--primary); }
+.modal-icon.discard{ background:#fff5f5; color:var(--danger); }
+.modal-title{ font-size:16px; font-weight:800; color:var(--ink); margin-bottom:8px; }
+.modal-text{ font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:22px; }
+.modal-actions{ display:flex; gap:10px; }
+.modal-btn{ flex:1; padding:11px 14px; border-radius:10px; border:none; font-size:13.5px; font-weight:700; cursor:pointer; transition:opacity .15s; font-family:inherit; }
+.modal-btn:hover{ opacity:.85; }
+.modal-btn-cancel{ background:#f3f4f6; color:#374151; }
+.modal-btn-confirm-save{ background:var(--primary); color:#fff; }
+.modal-btn-confirm-discard{ background:var(--danger); color:#fff; }
+.modal-btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+/* ── Toast ── */
+.toast-success{
+    position:fixed; top:20px; right:20px; z-index:10000; color:#fff;
+    padding:14px 20px; border-radius:12px; font-size:13.5px; font-weight:600;
+    display:flex; align-items:center; gap:10px; box-shadow:0 10px 28px rgba(0,0,0,.2);
+    transform:translateX(120%); transition:transform .3s ease;
+}
+.toast-success.show{ transform:translateX(0); }
+.toast-success.t-green{ background:var(--green); }
+.toast-success.t-blue{ background:var(--primary); }
+.toast-success.t-red{ background:var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="wz-header" id="wzHeader">
+    <div class="wz-header-icon" id="wzHeaderIcon"><i class="bi bi-clipboard2-data-fill"></i></div>
+    <h1 id="wzHeaderTitle">Hasil Pembersihan Data</h1>
+    <p id="wzHeaderSub">Tinjau hasil cleaning sebelum disimpan ke database</p>
+
+    <div class="stepper" id="wzStepper">
+        <div class="step done"><div class="step-dot"><i class="bi bi-check-lg"></i></div><span class="step-label">Upload</span></div>
+        <div class="step-line done"></div>
+        <div class="step active" id="stepCleaning"><div class="step-dot">2</div><span class="step-label">Cleaning</span></div>
+        <div class="step-line" id="stepLine2"></div>
+        <div class="step" id="stepSimpan"><div class="step-dot">3</div><span class="step-label">Simpan</span></div>
+    </div>
+</div>
+
+<div class="wz-wrap">
+
+<!-- ════════════════════════════════════════════════════════
+     STATE 0 — Halaman review awal (KPI + tabel + 3 tombol aksi)
+     ════════════════════════════════════════════════════════ -->
+<div class="wz-card" id="reviewState">
+
+    <div class="notice-banner" id="noticeBanner">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>
+            Data di halaman ini <b>belum tersimpan ke database</b>. Klik
+            <b>"Simpan ke Database"</b> untuk menyimpan secara permanen,
+            atau <b>"Download"</b> untuk mengunduh hasil cleaning tanpa menyimpannya.
+        </span>
+    </div>
+
+    <!-- ── KPI ── -->
+    <div class="kpi-grid">
+        <div class="kpi-card c-blue">
+            <div class="kpi-label">Baris Sebelum</div>
+            <div class="kpi-value">{{ "{:,}".format(summary.rows_before) }}</div>
+            <div class="kpi-sub">Data mentah CSV</div>
+        </div>
+        <div class="kpi-card c-green">
+            <div class="kpi-label">Baris Sesudah</div>
+            <div class="kpi-value">{{ "{:,}".format(summary.rows_after) }}</div>
+            <div class="kpi-sub">Siap disimpan</div>
+        </div>
+        <div class="kpi-card c-amber">
+            <div class="kpi-label">Duplikat Dihapus</div>
+            <div class="kpi-value">{{ "{:,}".format(summary.duplicates_removed) }}</div>
+            <div class="kpi-sub">Baris identik</div>
+        </div>
+        <div class="kpi-card c-red">
+            <div class="kpi-label">Kota/Kab Kosong</div>
+            <div class="kpi-value">{{ "{:,}".format(summary.empty_city_columns) }}</div>
+            <div class="kpi-sub">Perlu ditinjau</div>
+        </div>
+    </div>
+
+    {% if summary.kategori_jenis_obat %}
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">
+        <i class="bi bi-tag-fill" style="color:var(--primary)"></i>
+        Kategori Obat: <b style="color:var(--ink)">{{ summary.kategori_jenis_obat }}</b>
+        &nbsp;·&nbsp; Jenis Sarana Unik: <b style="color:var(--ink)">{{ summary.jenis_sarana_created }}</b>
+    </div>
+    {% endif %}
+
+    <!-- ── Kolom Kosong / NaN ── -->
+    <div class="sec-title"><i class="bi bi-exclamation-diamond-fill"></i> Ringkasan Kolom Kosong / NaN</div>
+    {% if summary.null_summary %}
+    <div class="tbl-wrap">
+        <table class="dtable">
+            <thead><tr><th>Kolom</th><th>Jumlah Kosong</th><th>Proporsi</th></tr></thead>
+            <tbody>
+                {% for kolom, jumlah in summary.null_summary.items() %}
+                {% set pct = ((jumlah / summary.rows_after) * 100) if summary.rows_after > 0 else 0 %}
+                <tr>
+                    <td><code style="background:#f3f4f6;padding:2px 7px;border-radius:5px;font-size:11.5px">{{ kolom }}</code></td>
+                    <td class="num danger">{{ "{:,}".format(jumlah) }}</td>
+                    <td style="width:160px">
+                        {{ pct | round(1) }}%
+                        <div class="pct-bar-track"><div class="pct-bar-fill" style="width:{{ pct }}%;background:var(--danger)"></div></div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="no-data"><i class="bi bi-check-circle-fill"></i> Tidak ada kolom dengan nilai kosong / NaN.</div>
+    {% endif %}
+
+    <!-- ── Distribusi Jenis Sarana ── -->
+    <div class="sec-title"><i class="bi bi-pie-chart-fill"></i> Distribusi Jenis Sarana</div>
+    {% if summary.sarana_distribution %}
+    <div class="tbl-wrap">
+        <table class="dtable">
+            <thead><tr><th>Jenis Sarana</th><th>Jumlah</th><th>Proporsi</th></tr></thead>
+            <tbody>
+                {% for nama, jumlah in summary.sarana_distribution.items() %}
+                {% set pct = ((jumlah / summary.rows_after) * 100) if summary.rows_after > 0 else 0 %}
+                <tr>
+                    <td>{{ nama }}</td>
+                    <td class="num">{{ "{:,}".format(jumlah) }}</td>
+                    <td style="width:160px">
+                        {{ pct | round(1) }}%
+                        <div class="pct-bar-track"><div class="pct-bar-fill" style="width:{{ pct }}%;background:var(--primary)"></div></div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="no-data" style="color:var(--muted);background:#f9fafb;border-color:var(--border)">
+        <i class="bi bi-inbox"></i> Tidak ada data distribusi sarana.
+    </div>
+    {% endif %}
+
+    <!-- ── Preview ── -->
+    <div class="sec-title"><i class="bi bi-table"></i> Preview Data (5 Baris Pertama)</div>
+    {% if summary.preview_data %}
+    <div class="preview-scroll">
+        <table class="dtable">
+            <thead><tr>{% for col in summary.preview_data[0].keys() %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+            <tbody>
+                {% for row in summary.preview_data %}
+                <tr>{% for value in row.values() %}<td>{{ value }}</td>{% endfor %}</tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="no-data" style="color:var(--muted);background:#f9fafb;border-color:var(--border)">
+        <i class="bi bi-inbox"></i> Tidak ada data preview.
+    </div>
+    {% endif %}
+
+</div><!-- /reviewState -->
+
+<!-- ════════════════════════════════════════════════════════
+     STATE 1 — Setelah klik "Simpan ke Database" & berhasil
+     ════════════════════════════════════════════════════════ -->
+<div class="wz-card state-overlay" id="savedState">
+    <div class="state-icon-wrap success">
+        <i class="bi bi-check-lg"></i>
+    </div>
+    <div class="state-title">Data Berhasil Disimpan!</div>
+    <div class="state-text">
+        Seluruh data hasil pembersihan telah berhasil disimpan ke database
+        secara permanen dan kini dapat diakses melalui dashboard.
+    </div>
+    <div class="state-meta">
+        <i class="bi bi-database-fill-check" style="color:var(--green)"></i>
+        <span><b id="savedRowsCount">{{ "{:,}".format(summary.rows_after) }}</b> baris tersimpan ke <code>drug_distribution</code></span>
+    </div>
+    <div class="state-actions">
+        <a href="{{ url_for('upload.download', sess_uuid=sess_uuid) }}" class="btn-action btn-download" id="downloadAfterSaveBtn">
+            <i class="bi bi-download"></i> Download Hasil
+        </a>
+        <button type="button" class="btn-action btn-save-perm" onclick="goToDashboard()">
+            <i class="bi bi-speedometer2"></i> Lihat di Dashboard
+        </button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     STATE 2 — Setelah klik "Download" (data belum tersimpan)
+     ════════════════════════════════════════════════════════ -->
+<div class="wz-card state-overlay" id="downloadedState">
+    <div class="state-icon-wrap info">
+        <i class="bi bi-download"></i>
+    </div>
+    <div class="state-title">File Berhasil Diunduh</div>
+    <div class="state-text">
+        File hasil cleaning telah berhasil diunduh ke perangkat Anda.
+        <b>Data ini masih belum tersimpan ke database</b> — pilih salah satu
+        tindakan di bawah untuk melanjutkan.
+    </div>
+    <div class="state-actions">
+        <button type="button" class="btn-action btn-save-perm" onclick="openModal('save')">
+            <i class="bi bi-database-add"></i> Simpan ke Database
+        </button>
+        <button type="button" class="btn-action btn-discard" onclick="openModal('discard')">
+            <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
+        </button>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     STATE 3 — Setelah konfirmasi "Kembali" (sebelum redirect)
+     ════════════════════════════════════════════════════════ -->
+<div class="wz-card state-overlay" id="discardedState">
+    <div class="state-icon-wrap info">
+        <i class="bi bi-info-circle-fill"></i>
+    </div>
+    <div class="state-title">Anda Akan Dikembalikan</div>
+    <div class="state-text">
+        Data sementara telah dihapus. Anda akan diarahkan kembali ke
+        <b>dashboard utama</b>...
+    </div>
+    <div class="redirect-progress">
+        <div class="redirect-progress-fill" id="redirectProgressFill"></div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     Tombol aksi awal — hanya tampil di state review (STATE 0)
+     ════════════════════════════════════════════════════════ -->
+<div class="action-buttons" id="initialActions">
+    <a href="{{ url_for('upload.download', sess_uuid=sess_uuid) }}" class="btn-action btn-download" id="downloadBtn">
+        <i class="bi bi-download"></i> Download Hasil Cleaning
+    </a>
+    <button type="button" class="btn-action btn-save-perm" id="btnOpenSave" onclick="openModal('save')">
+        <i class="bi bi-database-add"></i> Simpan ke Database
+    </button>
+    <button type="button" class="btn-action btn-discard" id="btnOpenDiscard" onclick="openModal('discard')">
+        <i class="bi bi-arrow-left"></i> Kembali
+    </button>
+</div>
+
+</div><!-- /wz-wrap -->
+
+<!-- ── Modal: Simpan ── -->
+<div class="modal-overlay" id="modalSave">
+    <div class="modal-box">
+        <div class="modal-icon save"><i class="bi bi-database-add"></i></div>
+        <div class="modal-title">Simpan ke Database?</div>
+        <div class="modal-text">
+            Apakah Anda yakin ingin menyimpan data ini ke database?
+            Tindakan ini akan menambahkan {{ "{:,}".format(summary.rows_after) }}
+            baris data secara permanen.
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('modalSave')">Batal</button>
+            <button type="button" class="modal-btn modal-btn-confirm-save" id="btnConfirmSave" onclick="confirmSave()">Ya, Simpan</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Kembali ── -->
+<div class="modal-overlay" id="modalDiscard">
+    <div class="modal-box">
+        <div class="modal-icon discard"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div class="modal-title">Keluar tanpa menyimpan?</div>
+        <div class="modal-text">Data belum disimpan dan akan dihapus. Apakah Anda yakin ingin kembali?</div>
+        <div class="modal-actions">
+            <button type="button" class="modal-btn modal-btn-cancel" onclick="closeModal('modalDiscard')">Batal</button>
+            <button type="button" class="modal-btn modal-btn-confirm-discard" id="btnConfirmDiscard" onclick="confirmDiscard()">Ya, Kembali</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-success" id="toastSuccess">
+    <i class="bi bi-check-circle-fill" id="toastIcon"></i>
+    <span id="toastMsg">Berhasil!</span>
+</div>
+
+<script>
+const SESS_UUID    = {{ sess_uuid | tojson }};
+const SAVE_URL     = {{ url_for('upload.save_permanent', sess_uuid=sess_uuid) | tojson }};
+const DISCARD_URL  = {{ url_for('upload.discard', sess_uuid=sess_uuid) | tojson }};
+const DASHBOARD_URL= "/dashboard";
+
+let _alreadyHandled = false; // cegah beforeunload warning setelah aksi final
+
+function showToast(msg, type){
+    const toast = document.getElementById('toastSuccess');
+    const icon  = document.getElementById('toastIcon');
+    toast.className = 'toast-success show t-' + type;
+    icon.className  = type === 'red' ? 'bi bi-x-circle-fill' : 'bi bi-check-circle-fill';
+    document.getElementById('toastMsg').textContent = msg;
+    setTimeout(() => toast.classList.remove('show'), 3200);
+}
+
+function openModal(which){
+    document.getElementById(which === 'save' ? 'modalSave' : 'modalDiscard').classList.add('show');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay.id); });
+});
+
+/* ── Header & stepper helper saat pindah state ── */
+function setHeaderState(kind){
+    const icon  = document.getElementById('wzHeaderIcon');
+    const title = document.getElementById('wzHeaderTitle');
+    const sub   = document.getElementById('wzHeaderSub');
+    const stepCleaning = document.getElementById('stepCleaning');
+    const stepLine2    = document.getElementById('stepLine2');
+    const stepSimpan   = document.getElementById('stepSimpan');
+
+    if (kind === 'saved'){
+        icon.innerHTML  = '<i class="bi bi-check-circle-fill"></i>';
+        title.textContent = 'Selesai — Data Tersimpan';
+        sub.textContent    = 'Proses upload dan penyimpanan data telah selesai';
+        stepCleaning.classList.remove('active'); stepCleaning.classList.add('done');
+        stepCleaning.querySelector('.step-dot').innerHTML = '<i class="bi bi-check-lg"></i>';
+        stepLine2.classList.add('done');
+        stepSimpan.classList.add('done');
+        stepSimpan.querySelector('.step-dot').innerHTML = '<i class="bi bi-check-lg"></i>';
+    } else if (kind === 'discarded'){
+        icon.innerHTML  = '<i class="bi bi-arrow-left-circle-fill"></i>';
+        title.textContent = 'Kembali ke Dashboard';
+        sub.textContent    = 'Sesi upload dibatalkan';
+    }
+}
+
+/* ── Switch tampilan antar state ── */
+function showState(id){
+    document.getElementById('reviewState').style.display   = 'none';
+    document.getElementById('initialActions').style.display = 'none';
+    document.querySelectorAll('.state-overlay').forEach(el => el.classList.remove('show'));
+    document.getElementById(id).classList.add('show');
+}
+
+/* ════════════════ SIMPAN KE DATABASE ════════════════ */
+function confirmSave(){
+    const btn = document.getElementById('btnConfirmSave');
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan…';
+
+    fetch(SAVE_URL, {
+        method: 'POST',
+        headers: { 'Cache-Control': 'no-store' },
+        cache: 'no-store',
+    })
+    .then(res => res.json().then(data => ({ status: res.status, data })))
+    .then(({ status, data }) => {
+        closeModal('modalSave');
+        if (data.ok) {
+            _alreadyHandled = true;
+            setHeaderState('saved');
+            showState('savedState');
+            showToast('Data berhasil disimpan ke database!', 'green');
+        } else {
+            btn.disabled = false;
+            btn.textContent = 'Ya, Simpan';
+            showToast(data.message || 'Gagal menyimpan data.', 'red');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Ya, Simpan';
+        closeModal('modalSave');
+        showToast('Terjadi kesalahan koneksi. Coba lagi.', 'red');
+    });
+}
+
+function goToDashboard(){
+    window.location.href = DASHBOARD_URL;
+}
+
+/* ════════════════ DOWNLOAD HASIL CLEANING ════════════════ */
+function handleDownloadClick(e){
+    // Biarkan browser memulai download (href asli), lalu tampilkan
+    // state "berhasil diunduh" tanpa memblokir unduhan itu sendiri.
+    setTimeout(() => {
+        showToast('File berhasil di-download!', 'blue');
+        showState('downloadedState');
+    }, 400);
+}
+document.getElementById('downloadBtn').addEventListener('click', handleDownloadClick);
+
+/* tombol download di state "savedState" — data sudah tersimpan,
+   jadi tidak perlu menampilkan pilihan simpan/kembali lagi */
+document.getElementById('downloadAfterSaveBtn').addEventListener('click', () => {
+    setTimeout(() => showToast('File berhasil di-download!', 'blue'), 400);
+});
+
+/* ════════════════ KEMBALI / KELUAR (DISCARD) ════════════════ */
+function confirmDiscard(){
+    const btn = document.getElementById('btnConfirmDiscard');
+    btn.disabled = true;
+    btn.textContent = 'Memproses…';
+
+    fetch(DISCARD_URL, {
+        method: 'POST',
+        headers: { 'Cache-Control': 'no-store' },
+        cache: 'no-store',
+    })
+    .then(res => res.json().then(data => ({ status: res.status, data })))
+    .then(({ data }) => {
+        closeModal('modalDiscard');
+        _alreadyHandled = true;
+        setHeaderState('discarded');
+        showState('discardedState');
+        showToast('Anda akan dikembalikan ke dashboard utama', 'blue');
+
+        // animasikan progress bar lalu redirect
+        const fill = document.getElementById('redirectProgressFill');
+        requestAnimationFrame(() => {
+            fill.style.transition = 'width 1.6s linear';
+            fill.style.width = '100%';
+        });
+        setTimeout(() => { window.location.href = DASHBOARD_URL; }, 1700);
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Ya, Kembali';
+        closeModal('modalDiscard');
+        showToast('Terjadi kesalahan koneksi. Coba lagi.', 'red');
+    });
+}
+
+/* ── Cegah navigasi tanpa sadar selama masih di state review ── */
+window.addEventListener('beforeunload', (e) => {
+    if (_alreadyHandled) return;
+    e.preventDefault();
+    e.returnValue = '';
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,287 @@
+/* ==========================
+   PAGE BACKGROUND
+========================== */
+
+body {
+    background: #f4f7fb;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ==========================
+   CONTAINER
+========================== */
+
+.summary-container {
+    max-width: 900px;
+    margin: 40px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* ==========================
+   TITLE
+========================== */
+
+.summary-title {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #1e293b;
+    font-weight: 700;
+}
+
+/* ==========================
+   SUBTITLE
+========================== */
+
+.summary-subtitle {
+    margin: 28px 0 14px;
+    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+/* ==========================
+   TABLE (shared base)
+========================== */
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.summary-table thead {
+    background: #0f172a;
+    color: white;
+}
+
+.summary-table th {
+    padding: 14px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.summary-table td {
+    padding: 14px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.summary-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.summary-table td:last-child {
+    font-weight: 600;
+    color: #0f766e;
+}
+
+/* ==========================
+   SARANA TABLE
+========================== */
+
+.sarana-table th:last-child,
+.sarana-table td:last-child {
+    width: 38%;
+}
+
+/* ==========================
+   PREVIEW TABLE
+========================== */
+
+/* Horizontal scroll wrapper — keeps the page layout intact
+   when the preview table is wider than the container.        */
+.preview-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.preview-table {
+    min-width: 700px;   /* ensures scroll triggers before columns crunch */
+}
+
+.preview-table th {
+    padding: 11px 14px;
+    font-size: 0.8rem;
+    background: #1e293b;
+}
+
+.preview-table td {
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    color: #334155;
+    font-weight: 400;   /* override the last-child bold from the base rule */
+}
+
+.preview-table td:last-child {
+    font-weight: 400;
+    color: #334155;
+}
+
+/* ==========================
+   NO DATA MESSAGE
+========================== */
+
+.no-data {
+    color: #94a3b8;
+    font-style: italic;
+    margin-top: 10px;
+}
+
+/* ==========================
+   ACTION BUTTONS
+========================== */
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    max-width: 900px;
+    margin: 32px auto 40px;
+}
+
+/* Base style shared by all three buttons */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 190px;
+    padding: 14px 28px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.btn-action:active {
+    transform: translateY(0);
+}
+
+/* Green — Download CSV */
+.btn-download {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.btn-download:hover {
+    background: #15803d;
+    color: #ffffff;
+    box-shadow: 0 6px 18px rgba(22, 163, 74, 0.35);
+}
+
+/* Blue — Simpan ke Database */
+.btn-save-perm {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.btn-save-perm:hover {
+    background: #1d4ed8;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+/* Red — Kembali / Discard */
+.btn-discard {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+.btn-discard:hover {
+    background: #b91c1c;
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+}
+/* ==========================
+   NULL SUMMARY TABLE
+========================== */
+
+.null-table td.null-count {
+    font-weight: 700;
+    color: #dc2626;
+}
+
+.null-table .col-name {
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    background: #f1f5f9;
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: #334155;
+}
+
+/* Green message when no nulls */
+.no-data {
+    color: #15803d;
+    font-weight: 500;
+    margin-top: 10px;
+}
+
+/* ==========================
+   ACTION BUTTONS
+========================== */
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    max-width: 900px;
+    margin: 32px auto 40px;
+}
+
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 190px;
+    padding: 14px 28px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.btn-action:active { transform: translateY(0); }
+
+/* Green */
+.btn-download { background: #16a34a; color: #fff; }
+.btn-download:hover { background: #15803d; color: #fff;
+    box-shadow: 0 6px 18px rgba(22,163,74,0.35); }
+
+/* Blue */
+.btn-save-perm { background: #2563eb; color: #fff; }
+.btn-save-perm:hover { background: #1d4ed8;
+    box-shadow: 0 6px 18px rgba(37,99,235,0.35); }
+
+/* Red */
+.btn-discard { background: #dc2626; color: #fff; }
+.btn-discard:hover { background: #b91c1c;
+    box-shadow: 0 6px 18px rgba(220,38,38,0.35); }

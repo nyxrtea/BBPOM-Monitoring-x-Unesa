@@ -1,0 +1,885 @@
+{% extends "base.html" %}
+{% block title %}Forecasting — BPOM Monitor{% endblock %}
+{% block topbar_title %}
+<i class="bi bi-graph-up-arrow me-2" style="color:#0e9f6e"></i>Forecasting Distribusi Obat
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi-card{background:#fff;border-radius:14px;padding:16px 18px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.05);position:relative;overflow:hidden;transition:transform .18s,box-shadow .18s}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.1)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0}
+.kc-green::before{background:#0e9f6e}.kc-blue::before{background:#1a56db}
+.kc-amber::before{background:#ff8a4c}.kc-purple::before{background:#9061f9}
+.kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280}
+.kpi-value{font-size:26px;font-weight:800;line-height:1.1;margin:5px 0 3px;color:#111827}
+.kpi-sub{font-size:11px;color:#9ca3af}
+.cc{background:#fff;border-radius:14px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:14px;overflow:hidden}
+.cc-hd{padding:13px 18px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
+.cc-title{font-size:13.5px;font-weight:700;color:#111827}
+.cc-sub{font-size:11px;color:#9ca3af;margin-top:1px}
+.cc-body{padding:14px}
+.tab-bar{background:#fff;border-radius:12px;padding:8px 10px;margin-bottom:18px;border:1px solid #e5e7eb;display:flex;flex-wrap:wrap;gap:4px}
+.tbtn{padding:7px 14px;border:none;border-radius:8px;background:transparent;font-size:12.5px;font-weight:600;color:#6b7280;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .18s;font-family:inherit;white-space:nowrap}
+.tbtn:hover{background:#f0fdf4;color:#0e9f6e}
+.tbtn.active{background:#0e9f6e;color:#fff;box-shadow:0 3px 10px rgba(14,159,110,.3)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.filter-panel{background:#fff;border-radius:14px;padding:16px 18px;border:1px solid #e5e7eb;border-left:4px solid #0e9f6e;margin-bottom:18px}
+.model-card{border:2px solid #e5e7eb;border-radius:12px;padding:14px;cursor:pointer;transition:all .18s;background:#fff}
+.model-card:hover{border-color:#0e9f6e;background:#f0fdf4}
+.model-card.selected{border-color:#0e9f6e;background:#f0fdf4;box-shadow:0 0 0 3px rgba(14,159,110,.12)}
+.model-card .mc-name{font-size:13px;font-weight:700;color:#111827}
+.model-card .mc-desc{font-size:11px;color:#6b7280;margin-top:3px}
+.metric-badge{display:inline-block;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700}
+.run-btn{background:#0e9f6e;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:inherit;transition:all .18s}
+.run-btn:hover{background:#057a55;box-shadow:0 4px 14px rgba(14,159,110,.4)}
+.run-btn.loading{opacity:.7;cursor:not-allowed}
+.tbl-fc th{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;padding:9px 13px;background:#f9fafb;border-bottom:2px solid #e5e7eb;white-space:nowrap}
+.tbl-fc td{font-size:12.5px;padding:9px 13px;border-color:#f3f4f6;vertical-align:middle}
+.tbl-fc tbody tr:hover{background:#f0fdf4}
+@media(max-width:767px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ── Perbandingan Model: empty state kaya ── */
+.cmp-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:36px 20px 28px;gap:6px;
+}
+.cmp-empty-icon{
+  width:72px;height:72px;border-radius:50%;background:#f0fdf4;
+  display:flex;align-items:center;justify-content:center;margin-bottom:14px;
+  position:relative;
+}
+.cmp-empty-icon i{font-size:32px;color:#0e9f6e}
+.cmp-empty-icon::after{
+  content:'';position:absolute;inset:-6px;border-radius:50%;
+  border:2px dashed #bbf7d0;animation:cmpSpin 12s linear infinite;
+}
+@keyframes cmpSpin{to{transform:rotate(360deg)}}
+.cmp-empty-title{font-size:15px;font-weight:800;color:#111827;margin-bottom:5px}
+.cmp-empty-text{font-size:12.5px;color:#6b7280;max-width:380px;line-height:1.6;margin-bottom:22px}
+
+/* preview 4 model sebagai kartu mini, sebelum dijalankan */
+.cmp-model-preview{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;max-width:620px;margin-bottom:6px}
+@media(max-width:700px){.cmp-model-preview{grid-template-columns:repeat(2,1fr)}}
+.cmp-model-chip{
+  border:1.5px solid #e5e7eb;border-radius:12px;padding:14px 10px;text-align:center;
+  background:#fff;transition:all .2s;
+}
+.cmp-model-chip:hover{border-color:#bbf7d0;background:#f0fdf4;transform:translateY(-2px)}
+.cmp-model-chip-icon{
+  width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  margin:0 auto 8px;font-size:16px;color:#fff;
+}
+.cmp-model-chip-name{font-size:11px;font-weight:700;color:#111827;line-height:1.3}
+.cmp-model-chip-tag{font-size:9.5px;color:#9ca3af;margin-top:2px;text-transform:uppercase;letter-spacing:.3px}
+
+/* kartu penjelasan metrik (dipindah dari sidebar statis ke grid berwarna) */
+.metric-explain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+@media(max-width:700px){.metric-explain-grid{grid-template-columns:1fr}}
+.metric-explain-card{
+  border-radius:12px;padding:13px 14px;border:1px solid;
+}
+.metric-explain-card .me-label{font-size:11px;font-weight:800;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.metric-explain-card .me-desc{font-size:11px;color:#6b7280;line-height:1.5}
+
+/* progress steps saat model dijalankan (pengganti pills polos) */
+.cmp-progress-track{display:flex;align-items:center;gap:0;margin-bottom:4px}
+.cmp-progress-step{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;
+}
+.cmp-progress-step::before{
+  content:'';position:absolute;top:14px;left:-50%;width:100%;height:2px;background:#e5e7eb;z-index:0;
+}
+.cmp-progress-step:first-child::before{display:none}
+.cmp-progress-step.done::before{background:#0e9f6e}
+.cmp-progress-dot{
+  width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #e5e7eb;
+  display:flex;align-items:center;justify-content:center;font-size:13px;color:#9ca3af;z-index:1;transition:all .25s;
+}
+.cmp-progress-step.active .cmp-progress-dot{border-color:#0e9f6e;color:#0e9f6e;background:#f0fdf4;animation:pulseDot 1s ease-in-out infinite}
+.cmp-progress-step.done .cmp-progress-dot{border-color:#0e9f6e;background:#0e9f6e;color:#fff}
+@keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 rgba(14,159,110,.3)}50%{box-shadow:0 0 0 6px rgba(14,159,110,.12)}}
+.cmp-progress-label{font-size:10px;font-weight:700;color:#6b7280;text-align:center}
+.cmp-progress-step.active .cmp-progress-label{color:#0e9f6e}
+.cmp-progress-step.done .cmp-progress-label{color:#065f46}
+
+/* ── Grid chart per-model (small multiples) ── */
+.cmp-individual-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
+@media(max-width:860px){.cmp-individual-grid{grid-template-columns:1fr}}
+.cmp-individual-card{border:1px solid #e5e7eb;border-radius:13px;overflow:hidden;background:#fff}
+.cmp-individual-hd{
+  display:flex;align-items:center;justify-content:between;gap:10px;padding:12px 14px;
+  border-bottom:1px solid #f3f4f6;
+}
+.cmp-individual-icon{
+  width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:14px;flex-shrink:0;
+}
+.cmp-individual-title{font-size:12.5px;font-weight:800;color:#111827;flex:1}
+.cmp-individual-r2{font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;flex-shrink:0}
+.cmp-individual-r2.good{background:#d1fae5;color:#065f46}
+.cmp-individual-r2.warn{background:#fef3c7;color:#92400e}
+.cmp-individual-r2.bad{background:#fee2e2;color:#991b1b}
+.cmp-individual-chart{height:200px;padding:6px 4px 0}</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- FILTER & RUN PANEL -->
+<div class="filter-panel">
+  <div class="row g-3 align-items-end">
+    <div class="col-6 col-md-2">
+      <label class="form-label small fw-semibold mb-1">Tahun</label>
+      <select id="fTahun" class="form-select form-select-sm">
+        <option value="">Semua</option>
+        {% for t in tahun_list %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label small fw-semibold mb-1">Filter Obat</label>
+      <select id="fObat" class="form-select form-select-sm">
+        <option value="">Semua Obat</option>
+        {% for o in obat_list %}<option value="{{ o }}">{{ o }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small fw-semibold mb-1">Jenis Sarana</label>
+      <select id="fSarana" class="form-select form-select-sm">
+        <option value="">Semua</option>
+        {% for s in sarana_list %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small fw-semibold mb-1">Periode Forecast</label>
+      <select id="fPeriods" class="form-select form-select-sm">
+        <option value="3">3 Bulan</option>
+        <option value="6" selected>6 Bulan</option>
+        <option value="12">12 Bulan</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2 align-items-end">
+      <button class="run-btn" id="runBtn" onclick="runForecast()">
+        <i class="bi bi-play-fill"></i> Jalankan Forecast
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- KPI -->
+<div class="kpi-grid" id="kpiArea">
+  <div class="kpi-card kc-green"><div class="kpi-label">Total Bulan Data</div><div class="kpi-value" id="kBulan">—</div><div class="kpi-sub">Bulan historis</div></div>
+  <div class="kpi-card kc-blue"><div class="kpi-label">Rata-rata Bulanan</div><div class="kpi-value" id="kAvg">—</div><div class="kpi-sub">Pcs per bulan</div></div>
+  <div class="kpi-card kc-amber"><div class="kpi-label">Bulan Tertinggi</div><div class="kpi-value" id="kMax" style="font-size:18px">—</div><div class="kpi-sub" id="kMaxVal"></div></div>
+  <div class="kpi-card kc-purple"><div class="kpi-label">Growth Rate</div><div class="kpi-value" id="kGrowth">—</div><div class="kpi-sub">3 bln terakhir vs sebelumnya</div></div>
+</div>
+
+<!-- MODEL SELECTOR -->
+<div class="cc">
+  <div class="cc-hd"><div class="cc-title">🤖 Pilih Model Forecasting</div><div class="cc-sub">Klik model untuk memilih, lalu klik Jalankan Forecast</div></div>
+  <div class="cc-body">
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <div class="model-card selected" data-model="linear" onclick="selectModel(this)">
+          <div class="mc-name">📈 Linear Regression</div>
+          <div class="mc-desc">Tren linier sederhana. Cocok untuk data yang cenderung naik/turun secara konsisten.</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="model-card" data-model="polynomial" onclick="selectModel(this)">
+          <div class="mc-name">📉 Polynomial Regression</div>
+          <div class="mc-desc">Tren nonlinier (degree=2). Menangkap pola kurva seperti musiman.</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="model-card" data-model="moving_average" onclick="selectModel(this)">
+          <div class="mc-name">📊 Moving Average</div>
+          <div class="mc-desc">Rata-rata bergerak (window=3). Meredam noise untuk melihat tren utama.</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="model-card" data-model="exponential" onclick="selectModel(this)">
+          <div class="mc-name">⚡ Exponential Smoothing</div>
+          <div class="mc-desc">Bobot lebih besar untuk data terbaru (α=0.3). Responsif terhadap perubahan.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <button class="tbtn active" onclick="switchTab('chart',this)"><i class="bi bi-graph-up"></i>Grafik Forecast</button>
+  <button class="tbtn" onclick="switchTab('tabel',this)"><i class="bi bi-table"></i>Tabel Prediksi</button>
+  <button class="tbtn" onclick="switchTab('perbandingan',this)"><i class="bi bi-bar-chart-steps"></i>Perbandingan Model</button>
+  <button class="tbtn" onclick="switchTab('metodologi',this)"><i class="bi bi-book"></i>Metodologi</button>
+</div>
+
+<!-- TAB 1: CHART -->
+<div class="tab-panel active" id="tab-chart">
+  <div class="cc">
+    <div class="cc-hd">
+      <div>
+        <div class="cc-title" id="chartTitle">📈 Forecasting Distribusi Obat</div>
+        <div class="cc-sub" id="chartSub">Jalankan forecast untuk melihat prediksi</div>
+      </div>
+      <div class="d-flex gap-3" id="metricsBar" style="display:none!important"></div>
+    </div>
+    <div class="cc-body">
+      <div id="cForecast" style="height:360px">
+        <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+          <div class="text-center">
+            <i class="bi bi-graph-up" style="font-size:3rem;opacity:.2;display:block;margin-bottom:10px"></i>
+            Pilih model dan klik <b>Jalankan Forecast</b> untuk melihat prediksi
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Metrics cards -->
+  <div class="row g-3" id="metricCards" style="display:none">
+    <div class="col-md-4">
+      <div class="cc"><div class="cc-body text-center"><div class="kpi-label">MAE (Mean Absolute Error)</div><div class="kpi-value text-primary" id="mMAE">—</div><div class="kpi-sub">Rata-rata kesalahan prediksi</div></div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="cc"><div class="cc-body text-center"><div class="kpi-label">RMSE</div><div class="kpi-value text-warning" id="mRMSE">—</div><div class="kpi-sub">Root Mean Square Error</div></div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="cc"><div class="cc-body text-center"><div class="kpi-label">R² Score</div><div class="kpi-value text-success" id="mR2">—</div><div class="kpi-sub">Goodness of fit (0–1)</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: TABEL PREDIKSI -->
+<div class="tab-panel" id="tab-tabel">
+  <div class="cc">
+    <div class="cc-hd"><div class="cc-title">📋 Tabel Hasil Prediksi</div></div>
+    <div class="cc-body">
+      <div id="tabelEmpty" class="text-center py-5 text-muted">
+        <i class="bi bi-table" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:8px"></i>
+        Jalankan forecast terlebih dahulu
+      </div>
+      <div id="tabelWrap" style="display:none">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px">📅 Data Historis</div>
+            <div style="max-height:320px;overflow-y:auto">
+              <table class="table table-sm tbl-fc mb-0">
+                <thead><tr><th>Bulan</th><th class="text-end">Aktual (Pcs)</th><th class="text-end">Fitted</th><th class="text-end">Residual</th></tr></thead>
+                <tbody id="tbHistoris"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px">🔮 Prediksi Mendatang</div>
+            <div style="max-height:320px;overflow-y:auto">
+              <table class="table table-sm tbl-fc mb-0">
+                <thead><tr><th>Bulan</th><th class="text-end">Prediksi (Pcs)</th><th>Status</th></tr></thead>
+                <tbody id="tbPrediksi"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: PERBANDINGAN MODEL -->
+<div class="tab-panel" id="tab-perbandingan">
+  <div class="cc mb-3">
+    <div class="cc-hd">
+      <div>
+        <div class="cc-title">📊 Perbandingan Semua Model</div>
+        <div class="cc-sub">Jalankan ke-4 model sekaligus lalu bandingkan hasilnya</div>
+      </div>
+      <button class="run-btn" id="btnCompare" onclick="runAllModels()" style="padding:8px 18px;font-size:13px;display:none">
+        <i class="bi bi-arrow-repeat"></i> Jalankan Ulang
+      </button>
+    </div>
+    <div class="cc-body">
+
+      <!-- Progress / status area (versi step bertahap, bukan teks polos) -->
+      <div id="compareStatus" style="display:none;margin-bottom:16px">
+        <div class="cmp-progress-track">
+          <div class="cmp-progress-step" id="pstep-linear">
+            <div class="cmp-progress-dot"><i class="bi bi-graph-up"></i></div>
+            <div class="cmp-progress-label">Linear</div>
+          </div>
+          <div class="cmp-progress-step" id="pstep-polynomial">
+            <div class="cmp-progress-dot"><i class="bi bi-bezier2"></i></div>
+            <div class="cmp-progress-label">Polynomial</div>
+          </div>
+          <div class="cmp-progress-step" id="pstep-moving_average">
+            <div class="cmp-progress-dot"><i class="bi bi-water"></i></div>
+            <div class="cmp-progress-label">Moving Avg</div>
+          </div>
+          <div class="cmp-progress-step" id="pstep-exponential">
+            <div class="cmp-progress-dot"><i class="bi bi-activity"></i></div>
+            <div class="cmp-progress-label">Exp. Smoothing</div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mt-2" style="font-size:11.5px;color:#6b7280">
+          <div class="spinner-border spinner-border-sm text-success" id="compareSpinner" style="width:13px;height:13px;border-width:2px"></div>
+          <span id="compareStatusText">Menghitung 4 model sekaligus...</span>
+        </div>
+      </div>
+
+      <!-- Model progress pills (disembunyikan, digantikan cmp-progress-track di atas, tetap ada di DOM untuk kompatibilitas JS) -->
+      <div id="modelPills" style="display:none">
+        <span class="badge" id="pill-linear"></span>
+        <span class="badge" id="pill-polynomial"></span>
+        <span class="badge" id="pill-moving_average"></span>
+        <span class="badge" id="pill-exponential"></span>
+      </div>
+
+      <!-- Alert area -->
+      <div id="compareAlert" style="margin-bottom:10px"></div>
+
+      <!-- Chart -->
+      <div id="cComparisonWrap">
+
+        <!-- Empty state: kaya visual, preview 4 model + cara kerja -->
+        <div id="cComparisonEmpty">
+          <div class="cmp-empty">
+            <div class="cmp-empty-icon"><i class="bi bi-bar-chart-steps"></i></div>
+            <div class="cmp-empty-title">Belum Ada Perbandingan Dijalankan</div>
+            <div class="cmp-empty-text">
+              Sistem akan menjalankan <b>4 model forecasting</b> secara bersamaan
+              menggunakan filter yang sudah Anda atur, lalu menampilkan mana yang
+              paling akurat untuk data ini.
+            </div>
+
+            <div class="cmp-model-preview">
+              <div class="cmp-model-chip">
+                <div class="cmp-model-chip-icon" style="background:#1a56db"><i class="bi bi-graph-up"></i></div>
+                <div class="cmp-model-chip-name">Linear Regression</div>
+                <div class="cmp-model-chip-tag">Tren Lurus</div>
+              </div>
+              <div class="cmp-model-chip">
+                <div class="cmp-model-chip-icon" style="background:#9061f9"><i class="bi bi-bezier2"></i></div>
+                <div class="cmp-model-chip-name">Polynomial</div>
+                <div class="cmp-model-chip-tag">Tren Lengkung</div>
+              </div>
+              <div class="cmp-model-chip">
+                <div class="cmp-model-chip-icon" style="background:#0e9f6e"><i class="bi bi-water"></i></div>
+                <div class="cmp-model-chip-name">Moving Average</div>
+                <div class="cmp-model-chip-tag">Rata-rata Bergerak</div>
+              </div>
+              <div class="cmp-model-chip">
+                <div class="cmp-model-chip-icon" style="background:#ff8a4c"><i class="bi bi-activity"></i></div>
+                <div class="cmp-model-chip-name">Exp. Smoothing</div>
+                <div class="cmp-model-chip-tag">Bobot Waktu</div>
+              </div>
+            </div>
+
+            <button class="run-btn" onclick="runAllModels()" style="margin-top:6px">
+              <i class="bi bi-play-fill"></i> Jalankan Semua Model
+            </button>
+          </div>
+        </div>
+
+        <div id="cComparison" style="height:360px;display:none"></div>
+      </div>
+
+      <!-- Grid 4 chart individual per-model (terisi setelah runAllModels) -->
+      <div id="cIndividualGridWrap" style="display:none">
+        <div class="sec-title" style="font-size:13px;font-weight:800;color:#111827;margin:18px 0 4px;display:flex;align-items:center;gap:7px">
+          <i class="bi bi-grid-3x3-gap-fill" style="color:#0e9f6e"></i> Detail Grafik per Model
+        </div>
+        <div class="cmp-individual-grid" id="cIndividualGrid">
+        <div class="cmp-individual-card">
+          <div class="cmp-individual-hd">
+            <div class="cmp-individual-icon" style="background:#1a56db"><i class="bi bi-graph-up"></i></div>
+            <div class="cmp-individual-title">Linear Regression</div>
+            <div class="cmp-individual-r2" id="r2-linear">—</div>
+          </div>
+          <div class="cmp-individual-chart" id="chart-linear"></div>
+        </div>
+        <div class="cmp-individual-card">
+          <div class="cmp-individual-hd">
+            <div class="cmp-individual-icon" style="background:#9061f9"><i class="bi bi-bezier2"></i></div>
+            <div class="cmp-individual-title">Polynomial</div>
+            <div class="cmp-individual-r2" id="r2-polynomial">—</div>
+          </div>
+          <div class="cmp-individual-chart" id="chart-polynomial"></div>
+        </div>
+        <div class="cmp-individual-card">
+          <div class="cmp-individual-hd">
+            <div class="cmp-individual-icon" style="background:#0e9f6e"><i class="bi bi-water"></i></div>
+            <div class="cmp-individual-title">Moving Average</div>
+            <div class="cmp-individual-r2" id="r2-moving_average">—</div>
+          </div>
+          <div class="cmp-individual-chart" id="chart-moving_average"></div>
+        </div>
+        <div class="cmp-individual-card">
+          <div class="cmp-individual-hd">
+            <div class="cmp-individual-icon" style="background:#ff8a4c"><i class="bi bi-activity"></i></div>
+            <div class="cmp-individual-title">Exponential Smoothing</div>
+            <div class="cmp-individual-r2" id="r2-exponential">—</div>
+          </div>
+          <div class="cmp-individual-chart" id="chart-exponential"></div>
+        </div>
+        </div><!-- /cIndividualGrid -->
+      </div><!-- /cIndividualGridWrap -->
+
+    </div>
+  </div>
+
+  <!-- Tabel metrics -->
+  <div class="cc">
+    <div class="cc-hd"><div class="cc-title">📋 Tabel Perbandingan Metrics</div></div>
+    <div class="cc-body" style="padding:0">
+      <div style="overflow-x:auto">
+        <table class="table table-bordered tbl-fc mb-0">
+          <thead style="background:#f9fafb">
+            <tr>
+              <th>Model</th>
+              <th class="text-center">MAE ↓</th>
+              <th class="text-center">RMSE ↓</th>
+              <th class="text-center">R² ↑</th>
+              <th class="text-center">Prediksi Bulan Depan</th>
+              <th class="text-center">Rekomendasi</th>
+            </tr>
+          </thead>
+          <tbody id="tbComparison">
+            <tr><td colspan="6" class="text-center text-muted py-4">
+              <i class="bi bi-table" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:6px"></i>
+              Jalankan perbandingan terlebih dahulu
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Best model recommendation card -->
+  <div id="bestModelCard" style="display:none" class="cc">
+    <div class="cc-hd"><div class="cc-title">🏆 Rekomendasi Model Terbaik</div></div>
+    <div class="cc-body">
+      <div id="bestModelContent" class="p-3 rounded mb-2" style="background:#f0fdf4;border:1px solid #bbf7d0"></div>
+
+      <div class="metric-explain-grid">
+        <div class="metric-explain-card" style="background:#eff6ff;border-color:#bfdbfe">
+          <div class="me-label" style="color:#1e40af"><i class="bi bi-rulers"></i> MAE</div>
+          <div class="me-desc">Rata-rata selisih prediksi vs aktual. Lebih kecil = lebih baik.</div>
+        </div>
+        <div class="metric-explain-card" style="background:#fff7ed;border-color:#fed7aa">
+          <div class="me-label" style="color:#c2410c"><i class="bi bi-graph-down-arrow"></i> RMSE</div>
+          <div class="me-desc">Sensitif terhadap error besar. Lebih kecil = lebih baik.</div>
+        </div>
+        <div class="metric-explain-card" style="background:#f0fdf4;border-color:#bbf7d0">
+          <div class="me-label" style="color:#065f46"><i class="bi bi-bullseye"></i> R²</div>
+          <div class="me-desc">Proporsi variansi terjelaskan. Mendekati 1 = lebih baik. Negatif = lebih buruk dari rata-rata.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: METODOLOGI -->
+<div class="tab-panel" id="tab-metodologi">
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <div class="cc h-100">
+        <div class="cc-hd"><div class="cc-title">📖 Linear & Polynomial Regression</div></div>
+        <div class="cc-body" style="font-size:12.5px;line-height:1.9;color:#374151">
+          <b>Linear:</b> y = β₀ + β₁t<br>
+          <b>Polynomial:</b> y = β₀ + β₁t + β₂t²<br><br>
+          Dimana:<br>
+          • y = volume distribusi<br>
+          • t = indeks waktu (0, 1, 2, ...)<br>
+          • β₀ = intercept (nilai awal)<br>
+          • β₁ = slope (laju perubahan)<br><br>
+          <b>Kelebihan:</b> mudah diinterpretasi, baseline yang baik<br>
+          <b>Kekurangan:</b> asumsi linearitas, sensitif terhadap outlier<br><br>
+          <b>Evaluasi:</b> MAE, RMSE, R² Score
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="cc h-100">
+        <div class="cc-hd"><div class="cc-title">📖 Moving Average & Exponential Smoothing</div></div>
+        <div class="cc-body" style="font-size:12.5px;line-height:1.9;color:#374151">
+          <b>Moving Average:</b> MA(t) = Σ y(t-i) / w<br>
+          <b>Exp Smoothing:</b> S(t) = αy(t) + (1-α)S(t-1)<br><br>
+          Dimana:<br>
+          • w = window size (default: 3 bulan)<br>
+          • α = smoothing factor (0 &lt; α &lt; 1)<br>
+          • α besar → lebih responsif terhadap data baru<br>
+          • α kecil → lebih stabil, kurang reaktif<br><br>
+          <b>Kelebihan:</b> meredam noise, adaptif<br>
+          <b>Kekurangan:</b> lag terhadap perubahan mendadak<br><br>
+          <b>Default α:</b> 0.3 (konservatif)
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cc">
+    <div class="cc-hd"><div class="cc-title">🎯 Konversi Mata Kuliah</div></div>
+    <div class="cc-body">
+      <div class="row g-3">
+        <div class="col-md-3"><div class="p-3 rounded" style="background:#f0fdf4;border:1px solid #bbf7d0;font-size:12px"><b style="color:#065f46">Analisis Time Series</b><br>Forecasting bulanan, tren musiman, dekomposisi</div></div>
+        <div class="col-md-3"><div class="p-3 rounded" style="background:#eff6ff;border:1px solid #bfdbfe;font-size:12px"><b style="color:#1e40af">Machine Learning</b><br>Linear/Polynomial Regression, model fitting, validasi</div></div>
+        <div class="col-md-3"><div class="p-3 rounded" style="background:#faf5ff;border:1px solid #e9d5ff;font-size:12px"><b style="color:#7e3af2">Komputasi Statistika</b><br>MAE, RMSE, R², residual analysis</div></div>
+        <div class="col-md-3"><div class="p-3 rounded" style="background:#fff7ed;border:1px solid #fed7aa;font-size:12px"><b style="color:#c2410c">Visualisasi Data</b><br>Time series chart, multi-model comparison</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let _selectedModel = "linear";
+let _lastResult    = null;
+
+function selectModel(el) {
+  document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  _selectedModel = el.dataset.model;
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Load Summary KPI ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadSummary);
+
+function loadSummary() {
+  fetch('/forecast/api/summary').then(r=>r.json()).then(d => {
+    document.getElementById('kBulan').textContent = fmt(d.total_bulan);
+    document.getElementById('kAvg').textContent   = fmt(d.avg_monthly);
+    document.getElementById('kMax').textContent   = d.max_month || '—';
+    document.getElementById('kMaxVal').textContent = fmt(d.max_value) + ' Pcs';
+    const g = d.growth_rate || 0;
+    document.getElementById('kGrowth').textContent = (g >= 0 ? '+' : '') + g + '%';
+    document.getElementById('kGrowth').style.color = g >= 0 ? '#0e9f6e' : '#e02424';
+  });
+}
+
+// ── Run Forecast ─────────────────────────────────────────
+function getParams() {
+  return new URLSearchParams({
+    tahun:         document.getElementById('fTahun').value,
+    obat:          document.getElementById('fObat').value,
+    filter_sarana: document.getElementById('fSarana').value,
+    n_periods:     document.getElementById('fPeriods').value,
+    model:         _selectedModel,
+  }).toString();
+}
+
+function runForecast() {
+  const btn = document.getElementById('runBtn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Memproses...';
+
+  fetch(`/forecast/api/run?${getParams()}`)
+    .then(r=>r.json())
+    .then(d => {
+      btn.classList.remove('loading');
+      btn.innerHTML = '<i class="bi bi-play-fill"></i> Jalankan Forecast';
+
+      if (d.error) {
+        alert('Error: ' + d.error);
+        return;
+      }
+      _lastResult = d;
+      renderChart(d);
+      renderTable(d);
+      renderMetrics(d);
+      loadSummary();
+    })
+    .catch(e => {
+      btn.classList.remove('loading');
+      btn.innerHTML = '<i class="bi bi-play-fill"></i> Jalankan Forecast';
+      alert('Error: ' + e.message);
+    });
+}
+
+// ── Render Chart ─────────────────────────────────────────
+function renderChart(d) {
+  document.getElementById('chartTitle').textContent =
+    `📈 ${d.model_name} — ${d.filter_obat}`;
+  document.getElementById('chartSub').textContent =
+    `${d.total_months} bulan historis + ${d.n_periods} bulan prediksi`;
+
+  const histLabels = d.labels_history || [];
+  const histVals   = d.values_history || [];
+  const fittedVals = d.values_fitted  || [];
+  const fcLabels   = d.labels_forecast || [];
+  const fcVals     = d.values_forecast  || [];
+
+  const allLabels = [...histLabels, ...fcLabels];
+  const histTrace = {
+    x: histLabels, y: histVals,
+    type:'scatter', mode:'lines+markers', name:'Aktual',
+    line:{color:'#1a56db',width:2.5},
+    marker:{size:5,color:'#1a56db'},
+    hovertemplate:'<b>%{x}</b><br>Aktual: %{y:,.0f}<extra></extra>',
+  };
+  const fittedTrace = {
+    x: histLabels, y: fittedVals,
+    type:'scatter', mode:'lines', name:'Fitted',
+    line:{color:'#ff8a4c',width:2,dash:'dot'},
+    hovertemplate:'<b>%{x}</b><br>Fitted: %{y:,.0f}<extra></extra>',
+  };
+  const fcTrace = {
+    x: fcLabels, y: fcVals,
+    type:'scatter', mode:'lines+markers', name:'Prediksi',
+    line:{color:'#0e9f6e',width:2.5,dash:'dash'},
+    marker:{size:7,color:'#0e9f6e',symbol:'star'},
+    fill:'tozeroy', fillcolor:'rgba(14,159,110,.06)',
+    hovertemplate:'<b>%{x}</b><br>Prediksi: %{y:,.0f}<extra></extra>',
+  };
+
+  Plotly.newPlot('cForecast', [histTrace, fittedTrace, fcTrace], {
+    paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+    margin:{t:10,r:20,b:50,l:70},
+    xaxis:{showgrid:false,zeroline:false,tickangle:-30},
+    yaxis:{gridcolor:'#f3f4f6',zeroline:false,title:'Jumlah (Pcs)'},
+    legend:{orientation:'h',y:-0.22},
+    shapes:[{
+      type:'line', x0:histLabels[histLabels.length-1], x1:histLabels[histLabels.length-1],
+      y0:0, y1:1, yref:'paper',
+      line:{color:'#9061f9',width:1.5,dash:'dashdot'},
+    }],
+    font:{family:'Inter'},
+    hovermode:'x unified',
+  }, {responsive:true,displayModeBar:false});
+
+  document.getElementById('metricCards').style.display = 'flex';
+}
+
+// ── Render Metrics ─────────────────────────────────────────
+function renderMetrics(d) {
+  const m = d.metrics || {};
+  document.getElementById('mMAE').textContent  = fmt(m.mae);
+  document.getElementById('mRMSE').textContent = fmt(m.rmse);
+  document.getElementById('mR2').textContent   = (m.r2 || 0).toFixed(4);
+}
+
+// ── Render Table ──────────────────────────────────────────
+function renderTable(d) {
+  document.getElementById('tabelEmpty').style.display = 'none';
+  document.getElementById('tabelWrap').style.display  = 'block';
+
+  const hist    = d.values_history || [];
+  const fitted  = d.values_fitted  || [];
+  const labels  = d.labels_history || [];
+  const fcVals  = d.values_forecast || [];
+  const fcLabels = d.labels_forecast || [];
+
+  // Historis table
+  document.getElementById('tbHistoris').innerHTML = labels.map((l,i) => {
+    const actual   = hist[i]   || 0;
+    const fit      = fitted[i] || 0;
+    const residual = actual - fit;
+    const rColor   = residual >= 0 ? '#0e9f6e' : '#e02424';
+    return `<tr>
+      <td>${l}</td>
+      <td class="text-end">${fmt(actual)}</td>
+      <td class="text-end">${fmt(fit)}</td>
+      <td class="text-end" style="color:${rColor};font-weight:600">${residual >= 0 ? '+' : ''}${fmt(residual)}</td>
+    </tr>`;
+  }).join('');
+
+  // Prediksi table
+  const lastActual = hist[hist.length-1] || 0;
+  document.getElementById('tbPrediksi').innerHTML = fcLabels.map((l,i) => {
+    const pred = fcVals[i] || 0;
+    const diff = pred - (i === 0 ? lastActual : (fcVals[i-1] || lastActual));
+    const trend = diff >= 0
+      ? '<span class="badge" style="background:#d1fae5;color:#065f46">↑ Naik</span>'
+      : '<span class="badge" style="background:#fee2e2;color:#991b1b">↓ Turun</span>';
+    return `<tr>
+      <td><b style="color:#0e9f6e">${l}</b></td>
+      <td class="text-end fw-bold" style="color:#0e9f6e">${fmt(pred)}</td>
+      <td>${trend}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Run All Models (comparison) ───────────────────────────
+async function runAllModels() {
+  const models = ['linear','polynomial','moving_average','exponential'];
+  const names  = {
+    linear:'Linear Regression', polynomial:'Polynomial',
+    moving_average:'Moving Average', exponential:'Exponential Smoothing'
+  };
+  const colors = ['#1a56db','#9061f9','#0e9f6e','#ff8a4c'];
+
+  // ── Tampilkan progress, sembunyikan empty state ──
+  document.getElementById('cComparisonEmpty').style.display = 'none';
+  document.getElementById('compareStatus').style.display = 'block';
+  document.getElementById('compareAlert').innerHTML = '';
+  models.forEach(m => {
+    const step = document.getElementById('pstep-' + m);
+    step.classList.remove('done');
+    step.classList.add('active');
+  });
+
+  const baseParams = new URLSearchParams({
+    tahun:         document.getElementById('fTahun').value,
+    obat:          document.getElementById('fObat').value,
+    filter_sarana: document.getElementById('fSarana').value,
+    n_periods:     document.getElementById('fPeriods').value,
+  }).toString();
+
+  let results;
+  try {
+    results = await Promise.all(
+      models.map((m, i) =>
+        fetch(`/forecast/api/run?${baseParams}&model=${m}`)
+          .then(r => r.json())
+          .then(d => {
+            // tandai step ini selesai begitu responsnya tiba
+            const step = document.getElementById('pstep-' + m);
+            step.classList.remove('active');
+            step.classList.add('done');
+            return d;
+          })
+      )
+    );
+  } catch (err) {
+    document.getElementById('compareAlert').innerHTML =
+      `<div class="alert alert-danger py-2 px-3" style="font-size:12.5px">
+         <i class="bi bi-exclamation-triangle-fill me-1"></i>
+         Gagal menjalankan perbandingan model. Coba lagi.
+       </div>`;
+    document.getElementById('compareStatus').style.display = 'none';
+    document.getElementById('cComparisonEmpty').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('compareStatus').style.display = 'none';
+  document.getElementById('btnCompare').style.display = 'flex';
+
+  // Chart semua fitted
+  const traces = results.map((d, i) => ({
+    x: [...(d.labels_history||[]), ...(d.labels_forecast||[])],
+    y: [...(d.values_fitted||[]),  ...(d.values_forecast||[])],
+    type:'scatter', mode:'lines', name: names[models[i]],
+    line:{color:colors[i], width:2},
+  }));
+
+  // Tambah historis aktual
+  if (results[0] && results[0].labels_history) {
+    traces.unshift({
+      x: results[0].labels_history, y: results[0].values_history,
+      type:'scatter', mode:'lines+markers', name:'Aktual',
+      line:{color:'#111827',width:2.5},
+      marker:{size:4},
+    });
+  }
+
+  document.getElementById('cComparison').style.display = 'block';
+  Plotly.newPlot('cComparison', traces, {
+    paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+    margin:{t:10,r:20,b:50,l:70},
+    xaxis:{showgrid:false,zeroline:false,tickangle:-30},
+    yaxis:{gridcolor:'#f3f4f6',zeroline:false,title:'Jumlah (Pcs)'},
+    legend:{orientation:'h',y:-0.25},
+    font:{family:'Inter'},
+  }, {responsive:true,displayModeBar:false});
+
+  // ── Grid 4 chart individual per-model ──────────────────────
+  // Setiap model ditampilkan dalam chart terpisah: garis historis
+  // (aktual) berwarna gelap solid, garis fitted+forecast berwarna
+  // khas model dengan bagian forecast putus-putus, supaya batas
+  // antara data aktual dan prediksi terlihat jelas per model.
+  document.getElementById('cIndividualGridWrap').style.display = 'block';
+
+  results.forEach((d, i) => {
+    const m       = d.metrics || {};
+    const r2      = m.r2 || 0;
+    const histLen = (d.labels_history || []).length;
+
+    const r2Badge = document.getElementById('r2-' + models[i]);
+    r2Badge.textContent = 'R² ' + r2.toFixed(3);
+    r2Badge.className = 'cmp-individual-r2 ' +
+      (r2 >= 0.7 ? 'good' : r2 >= 0.3 ? 'warn' : 'bad');
+
+    const histTrace = {
+      x: d.labels_history || [], y: d.values_history || [],
+      type:'scatter', mode:'lines+markers', name:'Aktual',
+      line:{color:'#111827', width:2}, marker:{size:3},
+      showlegend:false,
+    };
+
+    const fittedTrace = {
+      x: d.labels_history || [], y: d.values_fitted || [],
+      type:'scatter', mode:'lines', name:'Fitted',
+      line:{color:colors[i], width:2}, showlegend:false,
+    };
+
+    // Sambungkan titik terakhir historis ke titik pertama forecast
+    // supaya garis putus-putus terlihat nyambung, bukan ada gap.
+    const lastHistLabel = (d.labels_history || [])[histLen - 1];
+    const lastHistValue = (d.values_history || [])[histLen - 1];
+
+    const forecastTrace = {
+      x: [lastHistLabel, ...(d.labels_forecast || [])],
+      y: [lastHistValue, ...(d.values_forecast || [])],
+      type:'scatter', mode:'lines+markers', name:'Forecast',
+      line:{color:colors[i], width:2, dash:'dot'},
+      marker:{size:4, symbol:'diamond'}, showlegend:false,
+    };
+
+    Plotly.newPlot('chart-' + models[i], [histTrace, fittedTrace, forecastTrace], {
+      paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+      margin:{t:6,r:10,b:34,l:50},
+      xaxis:{showgrid:false,zeroline:false,tickangle:-35,tickfont:{size:9}},
+      yaxis:{gridcolor:'#f3f4f6',zeroline:false,tickfont:{size:9}},
+      font:{family:'Inter',size:10},
+    }, {responsive:true,displayModeBar:false});
+  });
+
+  // Metrics table
+  const bestIdx = results.reduce((best, d, i) =>
+    ((d.metrics||{}).r2 || -Infinity) > ((results[best].metrics||{}).r2 || -Infinity) ? i : best, 0);
+
+  document.getElementById('tbComparison').innerHTML = results.map((d, i) => {
+    const m = d.metrics || {};
+    const fc = d.values_forecast || [];
+    const nextPred = fc[0] || 0;
+    const isBest = i === bestIdx;
+    return `<tr ${isBest ? 'style="background:#f0fdf4"' : ''}>
+      <td><b>${names[models[i]]}</b> ${isBest ? '<span class="badge" style="background:#d1fae5;color:#065f46">Best R²</span>' : ''}</td>
+      <td class="text-center">${fmt(m.mae)}</td>
+      <td class="text-center">${fmt(m.rmse)}</td>
+      <td class="text-center ${m.r2 >= 0.7 ? 'text-success' : 'text-warning'} fw-bold">${(m.r2||0).toFixed(4)}</td>
+      <td class="text-center fw-bold" style="color:#0e9f6e">${fmt(nextPred)}</td>
+      <td class="text-center">${isBest ? '✅ Direkomendasikan' : ''}</td>
+    </tr>`;
+  }).join('');
+
+  // Best model recommendation card
+  const bd = results[bestIdx];
+  const bm = bd.metrics || {};
+  document.getElementById('bestModelCard').style.display = 'block';
+  document.getElementById('bestModelContent').innerHTML = `
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:46px;height:46px;border-radius:12px;background:${colors[bestIdx]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;flex-shrink:0">
+        <i class="bi bi-trophy-fill"></i>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#065f46">${names[models[bestIdx]]}</div>
+        <div style="font-size:11.5px;color:#374151">
+          R² = ${(bm.r2||0).toFixed(4)} &nbsp;·&nbsp; MAE = ${fmt(bm.mae)} &nbsp;·&nbsp; RMSE = ${fmt(bm.rmse)}
+        </div>
+      </div>
+    </div>`;
+}
+
+function r2_max(results, idx) {
+  const r2s = results.map(d => (d.metrics || {}).r2 || 0);
+  return Math.max(...r2s) === r2s[idx];
+}
+</script>
+{% endblock %}

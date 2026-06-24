@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload Data Distribusi Obat — BPOM Monitor</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{
+    --primary:#1a56db; --primary-dark:#1e429f; --green:#0e9f6e;
+    --ink:#111827; --muted:#6b7280; --border:#e5e7eb; --bg:#f6f8fb; --danger:#e02424;
+}
+*{box-sizing:border-box}
+body{
+    margin:0; background:var(--bg); font-family:'Inter',sans-serif;
+    min-height:100vh; display:flex; flex-direction:column;
+}
+
+/* ── Header ── */
+.wz-header{
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    padding:30px 20px 64px; text-align:center; position:relative; overflow:hidden;
+}
+.wz-header::before{
+    content:''; position:absolute; inset:0;
+    background:radial-gradient(circle at 80% 0%, rgba(255,255,255,.08), transparent 60%);
+}
+.wz-header-icon{
+    width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.15);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 12px;
+    font-size:24px; color:#fff; position:relative; z-index:1;
+}
+.wz-header h1{ color:#fff; font-size:20px; font-weight:800; margin:0 0 5px; position:relative; z-index:1; }
+.wz-header p{ color:rgba(255,255,255,.75); font-size:13px; margin:0; position:relative; z-index:1; }
+
+/* ── Progress stepper ── */
+.stepper{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    margin-top:20px; position:relative; z-index:1;
+}
+.step{ display:flex; align-items:center; gap:8px; }
+.step-dot{
+    width:28px; height:28px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:12px; font-weight:800; flex-shrink:0;
+}
+.step.active .step-dot{ background:#fff; color:var(--primary); }
+.step.pending .step-dot{ background:rgba(255,255,255,.18); color:rgba(255,255,255,.7); }
+.step-label{ font-size:11.5px; font-weight:700; color:rgba(255,255,255,.85); }
+.step.pending .step-label{ color:rgba(255,255,255,.55); }
+.step-line{ width:34px; height:2px; background:rgba(255,255,255,.25); }
+
+/* ── Content card ── */
+.wz-wrap{ flex:1; display:flex; justify-content:center; padding:0 20px 50px; margin-top:-44px; position:relative; z-index:2; }
+.wz-card{
+    background:#fff; border-radius:18px; box-shadow:0 20px 50px rgba(17,24,39,.12);
+    width:100%; max-width:680px; padding:32px 30px;
+}
+
+.form-group{ margin-bottom:22px; }
+.form-label{ font-size:13px; font-weight:700; color:var(--ink); margin-bottom:8px; display:block; }
+.form-label .req{ color:var(--danger); }
+.form-control{
+    width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:10px;
+    font-size:13.5px; font-family:inherit; outline:none; transition:border-color .18s;
+}
+.form-control:focus{ border-color:var(--primary); }
+.char-counter{ font-size:11px; color:var(--muted); text-align:right; margin-top:5px; }
+.char-counter.warn{ color:#d97706; font-weight:700; }
+
+/* ── Drag & drop zone ── */
+.upload-zone{
+    border:2px dashed var(--border); border-radius:14px; padding:34px 24px;
+    text-align:center; background:#f9fafb; transition:all .22s; cursor:pointer; position:relative;
+}
+.upload-zone:hover, .upload-zone.dragover{
+    border-color:var(--primary); background:#eff6ff;
+}
+.upload-zone.has-file{
+    border-color:var(--green); background:#f0fdf4; border-style:solid;
+}
+.upload-zone-icon{ font-size:38px; color:#9ca3af; margin-bottom:10px; transition:color .18s; }
+.upload-zone:hover .upload-zone-icon, .upload-zone.dragover .upload-zone-icon{ color:var(--primary); }
+.upload-zone.has-file .upload-zone-icon{ color:var(--green); }
+.upload-zone-title{ font-size:14px; font-weight:700; color:var(--ink); margin-bottom:4px; }
+.upload-zone-sub{ font-size:11.5px; color:var(--muted); }
+.upload-zone input[type=file]{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+.file-chip{
+    display:none; align-items:center; gap:10px; margin-top:14px; padding:10px 14px;
+    background:#fff; border:1px solid var(--border); border-radius:10px; font-size:12.5px;
+}
+.file-chip.show{ display:flex; }
+.file-chip i{ font-size:18px; color:var(--green); }
+.file-chip-name{ font-weight:700; color:var(--ink); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-chip-size{ color:var(--muted); flex-shrink:0; }
+.file-chip-remove{ color:var(--danger); cursor:pointer; flex-shrink:0; font-size:15px; }
+
+/* ── Error banner ── */
+.err-banner{
+    background:#fff5f5; border:1px solid #fecaca; border-radius:10px; padding:12px 16px;
+    margin-bottom:20px; font-size:12.5px; color:#991b1b; display:flex; align-items:flex-start; gap:9px;
+}
+.err-banner i{ font-size:16px; flex-shrink:0; margin-top:1px; }
+
+/* ── Submit button ── */
+.btn-submit{
+    width:100%; padding:13px; border:none; border-radius:11px; background:var(--primary);
+    color:#fff; font-size:14px; font-weight:700; cursor:pointer; transition:all .2s;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-submit:hover{ background:var(--primary-dark); transform:translateY(-1px); box-shadow:0 8px 20px rgba(26,86,219,.3); }
+.btn-submit:disabled{ opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+.btn-submit.loading .btn-text{ display:none; }
+.btn-submit .spinner{ display:none; width:16px; height:16px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+.btn-submit.loading .spinner{ display:inline-block; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.wz-back{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    margin-top:18px; color:var(--muted); text-decoration:none; font-size:12.5px; font-weight:600;
+    transition:color .18s;
+}
+.wz-back:hover{ color:var(--primary); text-decoration:none; }
+</style>
+</head>
+<body>
+
+<div class="wz-header">
+    <div class="wz-header-icon"><i class="bi bi-capsule-pill"></i></div>
+    <h1>Upload Data Distribusi Obat</h1>
+    <p>Unggah file CSV untuk memulai pembersihan data otomatis</p>
+
+    <div class="stepper">
+        <div class="step active">
+            <div class="step-dot">1</div>
+            <span class="step-label">Upload</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step pending">
+            <div class="step-dot">2</div>
+            <span class="step-label">Cleaning</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step pending">
+            <div class="step-dot">3</div>
+            <span class="step-label">Simpan</span>
+        </div>
+    </div>
+</div>
+
+<div class="wz-wrap">
+    <div class="wz-card">
+
+        {% if error %}
+        <div class="err-banner">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('upload.upload_data_obat_post') }}"
+              enctype="multipart/form-data" id="uploadForm">
+
+            <div class="form-group">
+                <label for="kategori_jenis_obat" class="form-label">
+                    Jenis Kategori Obat <span class="req">*</span>
+                </label>
+                <input type="text" id="kategori_jenis_obat" name="kategori_jenis_obat"
+                       class="form-control" maxlength="100"
+                       placeholder="Contoh: Meropenem" required>
+                <div class="char-counter"><span id="charCount">0</span>/100 karakter</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">File CSV <span class="req">*</span></label>
+                <div class="upload-zone" id="uploadZone">
+                    <i class="bi bi-filetype-csv upload-zone-icon"></i>
+                    <div class="upload-zone-title">Pilih atau tarik file CSV ke sini</div>
+                    <div class="upload-zone-sub">Maksimal ukuran file: 50MB</div>
+                    <input type="file" name="file" id="fileInput" accept=".csv" required>
+                </div>
+                <div class="file-chip" id="fileChip">
+                    <i class="bi bi-file-earmark-check-fill"></i>
+                    <span class="file-chip-name" id="fileChipName"></span>
+                    <span class="file-chip-size" id="fileChipSize"></span>
+                    <i class="bi bi-x-circle-fill file-chip-remove" id="fileChipRemove"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <span class="btn-text"><i class="bi bi-magic"></i> Upload &amp; Mulai Cleaning</span>
+                <span class="spinner"></span>
+            </button>
+
+            <a href="/dashboard" class="wz-back">
+                <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
+            </a>
+
+        </form>
+
+    </div>
+</div>
+
+<script>
+const input   = document.getElementById('kategori_jenis_obat');
+const counter = document.getElementById('charCount');
+input.addEventListener('input', function () {
+    counter.textContent = this.value.length;
+    counter.parentElement.classList.toggle('warn', this.value.length > 85);
+});
+
+const zone      = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const chip      = document.getElementById('fileChip');
+const chipName  = document.getElementById('fileChipName');
+const chipSize  = document.getElementById('fileChipSize');
+const chipRemove= document.getElementById('fileChipRemove');
+
+function fmtSize(bytes){
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+function showFile(file){
+    if (!file) return;
+    zone.classList.add('has-file');
+    chip.classList.add('show');
+    chipName.textContent = file.name;
+    chipSize.textContent = fmtSize(file.size);
+}
+
+fileInput.addEventListener('change', () => showFile(fileInput.files[0]));
+
+['dragenter','dragover'].forEach(evt =>
+    zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('dragover'); })
+);
+['dragleave','drop'].forEach(evt =>
+    zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('dragover'); })
+);
+zone.addEventListener('drop', e => {
+    const file = e.dataTransfer.files[0];
+    if (file) { fileInput.files = e.dataTransfer.files; showFile(file); }
+});
+
+chipRemove.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fileInput.value = '';
+    zone.classList.remove('has-file');
+    chip.classList.remove('show');
+});
+
+document.getElementById('uploadForm').addEventListener('submit', function(){
+    const btn = document.getElementById('submitBtn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,652 @@
+{% extends "base.html" %}
+{% block title %}Bayesian Risk Analysis — BPOM Monitor{% endblock %}
+{% block topbar_title %}
+<i class="bi bi-graph-up-arrow me-2 text-purple" style="color:#9061f9"></i>Bayesian Risk Analysis
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* KPI Grid */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.kpi-card {
+  background: #fff; border-radius: 14px; padding: 16px 18px;
+  border: 1px solid #e5e7eb; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  position: relative; overflow: hidden; transition: transform .18s, box-shadow .18s;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.1); }
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 14px 14px 0 0; }
+.kc-red::before    { background: #e02424; }
+.kc-amber::before  { background: #ff8a4c; }
+.kc-green::before  { background: #0e9f6e; }
+.kc-purple::before { background: #9061f9; }
+.kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; }
+.kpi-value { font-size: 28px; font-weight: 800; line-height: 1.1; margin: 5px 0 3px; color: #111827; }
+.kpi-sub   { font-size: 11px; color: #9ca3af; }
+
+/* Chart Cards */
+.cc { background: #fff; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 1px 4px rgba(0,0,0,.05); overflow: hidden; margin-bottom: 14px; }
+.cc-hd { padding: 13px 18px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+.cc-title { font-size: 13.5px; font-weight: 700; color: #111827; }
+.cc-sub   { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+.cc-body  { padding: 14px; }
+
+/* Tab bar */
+.tab-bar { background: #fff; border-radius: 12px; padding: 8px 10px; margin-bottom: 18px; border: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; gap: 4px; }
+.tbtn { padding: 7px 14px; border: none; border-radius: 8px; background: transparent; font-size: 12.5px; font-weight: 600; color: #6b7280; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all .18s; font-family: inherit; white-space: nowrap; }
+.tbtn:hover { background: #faf5ff; color: #9061f9; }
+.tbtn.active { background: #9061f9; color: #fff; box-shadow: 0 3px 10px rgba(144,97,249,.3); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Filter bar */
+.filter-bar { background: #fff; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; border-left: 4px solid #9061f9; }
+
+/* Risk badges */
+.risk-high   { background: #fee2e2; color: #991b1b; padding: 3px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.risk-medium { background: #fef9c3; color: #713f12; padding: 3px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.risk-low    { background: #d1fae5; color: #065f46; padding: 3px 9px; border-radius: 20px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+
+/* Score bar */
+.score-bar-wrap { background: #f3f4f6; border-radius: 20px; height: 7px; width: 80px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 6px; }
+.score-bar-fill { height: 100%; border-radius: 20px; transition: width .3s; }
+
+/* Table */
+.tbl-by th { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #6b7280; padding: 9px 13px; background: #f9fafb; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+.tbl-by td { font-size: 12.5px; padding: 9px 13px; border-color: #f3f4f6; vertical-align: middle; }
+.tbl-by tbody tr:hover { background: #faf5ff; }
+
+/* Evidence tags */
+.ev-tag { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 600; margin: 1px; }
+.ev-yes { background: #fee2e2; color: #991b1b; }
+.ev-no  { background: #f3f4f6; color: #9ca3af; }
+
+/* Methodology box */
+.method-box { border-radius: 12px; padding: 16px; border: 1px solid; }
+
+@media (max-width: 767px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── FILTER BAR ────────────────────────────────────────── -->
+<div class="filter-bar d-flex gap-2 align-items-end flex-wrap mb-3">
+  <div>
+    <label class="form-label small fw-semibold mb-1">Tahun</label>
+    <select id="fTahun" class="form-select form-select-sm" style="width:120px" onchange="loadAll()">
+      <option value="">Semua</option>
+      {% for t in tahun_list %}
+      <option value="{{ t }}">{{ t }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="form-label small fw-semibold mb-1">Jenis Sarana</label>
+    <select id="fSarana" class="form-select form-select-sm" style="width:160px" onchange="loadAll()">
+      <option value="">Semua</option>
+      {% for s in sarana_list %}
+      <option value="{{ s }}">{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="form-label small fw-semibold mb-1">Kategori Obat</label>
+    <select id="fKategori" class="form-select form-select-sm" style="width:150px" onchange="loadAll()">
+      <option value="">Semua</option>
+      {% for k in kategori_list %}
+      <option value="{{ k }}">{{ k }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="ms-auto d-flex align-items-center gap-2">
+    <div class="text-muted small text-end">
+      <div id="fInfo">—</div>
+      <div id="fCacheInfo" style="font-size:10.5px;color:#9ca3af"></div>
+    </div>
+    <button id="btnRefresh" class="btn btn-sm btn-outline-primary" onclick="refreshData()">
+      <i class="bi bi-arrow-clockwise"></i> Refresh Data
+    </button>
+  </div>
+</div>
+
+<!-- ── KPI CARDS ─────────────────────────────────────────── -->
+<div class="kpi-grid">
+  <div class="kpi-card kc-red">
+    <div class="kpi-label">🔴 High Risk</div>
+    <div class="kpi-value" id="kHigh">—</div>
+    <div class="kpi-sub">Probabilitas ≥ 75%</div>
+  </div>
+  <div class="kpi-card kc-amber">
+    <div class="kpi-label">🟡 Medium Risk</div>
+    <div class="kpi-value" id="kMedium">—</div>
+    <div class="kpi-sub">Probabilitas 45–74%</div>
+  </div>
+  <div class="kpi-card kc-green">
+    <div class="kpi-label">🟢 Low Risk</div>
+    <div class="kpi-value" id="kLow">—</div>
+    <div class="kpi-sub">Probabilitas &lt; 45%</div>
+  </div>
+  <div class="kpi-card kc-purple">
+    <div class="kpi-label">📊 Rata-rata Probabilitas</div>
+    <div class="kpi-value" id="kAvg">—</div>
+    <div class="kpi-sub">Posterior Bayesian</div>
+  </div>
+</div>
+
+<!-- ── TABS ──────────────────────────────────────────────── -->
+<div class="tab-bar">
+  <button class="tbtn active" onclick="switchTab('overview', this)"><i class="bi bi-grid-fill"></i>Overview</button>
+  <button class="tbtn" onclick="switchTab('data', this)"><i class="bi bi-table"></i>Tabel Data</button>
+  <button class="tbtn" onclick="switchTab('faktor', this)"><i class="bi bi-list-check"></i>Faktor Risiko</button>
+  <button class="tbtn" onclick="switchTab('metodologi', this)"><i class="bi bi-book"></i>Metodologi</button>
+</div>
+
+<!-- ══════ TAB 1: OVERVIEW ══════ -->
+<div class="tab-panel active" id="tab-overview">
+  <div class="row g-3 mb-3">
+    <!-- Donut distribusi risiko -->
+    <div class="col-md-4">
+      <div class="cc h-100">
+        <div class="cc-hd"><div class="cc-title">📊 Distribusi Level Risiko</div></div>
+        <div class="cc-body"><div id="cDonut" style="height:250px"></div></div>
+      </div>
+    </div>
+    <!-- Histogram skor -->
+    <div class="col-md-8">
+      <div class="cc h-100">
+        <div class="cc-hd"><div class="cc-title">📈 Distribusi Skor Risiko (0–100)</div><div class="cc-sub">Histogram posterior probability</div></div>
+        <div class="cc-body"><div id="cHist" style="height:250px"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="row g-3">
+    <!-- Top faktor -->
+    <div class="col-md-6">
+      <div class="cc">
+        <div class="cc-hd"><div class="cc-title">🔍 Top Faktor Risiko Terbanyak</div></div>
+        <div class="cc-body"><div id="cFactors" style="height:240px"></div></div>
+      </div>
+    </div>
+    <!-- Risk per sarana -->
+    <div class="col-md-6">
+      <div class="cc">
+        <div class="cc-hd"><div class="cc-title">🏥 % High Risk per Jenis Sarana</div></div>
+        <div class="cc-body"><div id="cSarana" style="height:240px"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TAB 2: TABEL DATA ══════ -->
+<div class="tab-panel" id="tab-data">
+  <!-- Sub filter mode + search -->
+  <div class="filter-bar d-flex gap-2 align-items-end flex-wrap">
+    <div>
+      <label class="form-label small fw-semibold mb-1">Tampilkan</label>
+      <select id="tMode" class="form-select form-select-sm" style="width:140px" onchange="loadTable(1)">
+        <option value="all">Semua</option>
+        <option value="high">High Risk</option>
+        <option value="medium">Medium Risk</option>
+        <option value="low">Low Risk</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label small fw-semibold mb-1">Cari</label>
+      <input type="text" id="tSearch" class="form-control form-control-sm" style="width:200px"
+             placeholder="Nama obat / tujuan..." oninput="loadTable(1)">
+    </div>
+    <span class="text-muted small ms-auto" id="tInfo"></span>
+  </div>
+
+  <div class="cc">
+    <div style="overflow-x:auto; max-height:540px; overflow-y:auto;">
+      <table class="table table-hover tbl-by mb-0">
+        <thead><tr>
+          <th>#</th>
+          <th>Nama Obat</th>
+          <th>Tujuan Penyaluran</th>
+          <th>Kota</th>
+          <th class="text-end">Jumlah</th>
+          <th>Jenis Sarana</th>
+          <th>Tanggal</th>
+          <th class="text-center">Risk Level</th>
+          <th class="text-center">Skor</th>
+          <th>Faktor Risiko</th>
+        </tr></thead>
+        <tbody id="tbData"></tbody>
+      </table>
+    </div>
+    <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top" style="background:#f9fafb;">
+      <div class="text-muted small" id="tPgInfo"></div>
+      <nav><ul class="pagination pagination-sm mb-0" id="tPagination"></ul></nav>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TAB 3: FAKTOR RISIKO ══════ -->
+<div class="tab-panel" id="tab-faktor">
+  <div class="cc mb-3">
+    <div class="cc-hd"><div class="cc-title">📋 Detail Faktor Risiko yang Digunakan</div></div>
+    <div class="cc-body">
+      <div class="table-responsive">
+        <table class="table table-bordered tbl-by">
+          <thead><tr>
+            <th>Faktor Risiko (Evidence)</th>
+            <th class="text-center">P(E|Berisiko)</th>
+            <th class="text-center">P(E|Aman)</th>
+            <th class="text-center">Likelihood Ratio</th>
+            <th>Penjelasan</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="ev-tag ev-yes">Anomali Terdeteksi</span></td>
+              <td class="text-center fw-bold text-danger">0.90</td>
+              <td class="text-center">0.05</td>
+              <td class="text-center fw-bold">18.0×</td>
+              <td style="font-size:12px">Jika sistem anomaly mendeteksi data ini sebagai anomali, sangat mungkin berisiko</td>
+            </tr>
+            <tr>
+              <td><span class="ev-tag ev-yes">Volume Sangat Besar (≥500rb)</span></td>
+              <td class="text-center fw-bold text-danger">0.70</td>
+              <td class="text-center">0.10</td>
+              <td class="text-center fw-bold">7.0×</td>
+              <td style="font-size:12px">Distribusi volume abnormal tinggi mengindikasikan potensi penyalahgunaan</td>
+            </tr>
+            <tr>
+              <td><span class="ev-tag ev-yes">Hampir/Sudah Kadaluwarsa</span></td>
+              <td class="text-center fw-bold text-danger">0.60</td>
+              <td class="text-center">0.15</td>
+              <td class="text-center fw-bold">4.0×</td>
+              <td style="font-size:12px">Produk dengan sisa masa aktif ≤ 90 hari berisiko tidak digunakan dengan baik</td>
+            </tr>
+            <tr>
+              <td><span class="ev-tag ev-yes">Alamat Tujuan Kosong</span></td>
+              <td class="text-center fw-bold text-danger">0.50</td>
+              <td class="text-center">0.05</td>
+              <td class="text-center fw-bold">10.0×</td>
+              <td style="font-size:12px">Distribusi tanpa alamat tujuan yang jelas sulit diverifikasi keabsahannya</td>
+            </tr>
+            <tr>
+              <td><span class="ev-tag ev-yes">Sarana Tidak Terklasifikasi</span></td>
+              <td class="text-center fw-bold text-warning">0.40</td>
+              <td class="text-center">0.08</td>
+              <td class="text-center fw-bold">5.0×</td>
+              <td style="font-size:12px">Jenis sarana tidak dikenal atau tidak terdaftar meningkatkan risiko distribusi ilegal</td>
+            </tr>
+            <tr>
+              <td><span class="ev-tag ev-yes">No. Faktur Kosong</span></td>
+              <td class="text-center fw-bold text-warning">0.35</td>
+              <td class="text-center">0.10</td>
+              <td class="text-center fw-bold">3.5×</td>
+              <td style="font-size:12px">Transaksi tanpa nomor faktur tidak dapat dilacak secara administratif</td>
+            </tr>
+            <tr>
+              <td><span class="ev-tag ev-yes">Distribusi Lintas Provinsi</span></td>
+              <td class="text-center">0.30</td>
+              <td class="text-center">0.20</td>
+              <td class="text-center">1.5×</td>
+              <td style="font-size:12px">Distribusi ke provinsi berbeda dari asal PBF memerlukan pengawasan lebih ketat</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 p-3 rounded" style="background:#faf5ff;border:1px solid #e9d5ff;">
+        <div style="font-size:12px;font-weight:700;color:#7e3af2;margin-bottom:6px">📌 Prior Probability</div>
+        <div style="font-size:12px;color:#374151;line-height:1.8">
+          Berdasarkan pengetahuan domain BPOM:<br>
+          • <b>P(Berisiko)</b> = 0.15 → 15% distribusi secara historis berpotensi berisiko<br>
+          • <b>P(Aman)</b> = 0.85 → 85% distribusi berjalan normal dan sesuai prosedur
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top faktor per data -->
+  <div class="cc">
+    <div class="cc-hd"><div class="cc-title">📊 Frekuensi Kemunculan Setiap Faktor (dari data saat ini)</div></div>
+    <div class="cc-body"><div id="cFactorDetail" style="height:280px"></div></div>
+  </div>
+</div>
+
+<!-- ══════ TAB 4: METODOLOGI ══════ -->
+<div class="tab-panel" id="tab-metodologi">
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <div class="method-box" style="background:#faf5ff;border-color:#e9d5ff">
+        <div style="font-size:14px;font-weight:800;color:#7e3af2;margin-bottom:12px">
+          🧮 Teorema Bayes
+        </div>
+        <div style="font-size:12.5px;color:#374151;line-height:1.9">
+          <b>Formula Dasar:</b><br>
+          <code style="background:#fff;padding:4px 8px;border-radius:6px;display:block;margin:6px 0;font-size:12px">
+            P(H|E) = P(E|H) × P(H) / P(E)
+          </code>
+          <b>Keterangan:</b><br>
+          • <b>P(H)</b> = Prior probability (keyakinan awal)<br>
+          • <b>P(E|H)</b> = Likelihood (seberapa mungkin bukti muncul jika hipotesis benar)<br>
+          • <b>P(H|E)</b> = Posterior probability (keyakinan setelah melihat bukti)<br>
+          • <b>P(E)</b> = Normalizing constant<br><br>
+          <b>Implementasi (Naive Bayes):</b><br>
+          <code style="background:#fff;padding:4px 8px;border-radius:6px;display:block;margin:6px 0;font-size:12px">
+            P(H|E₁,E₂,...,Eₙ) ∝ P(H) × ∏ P(Eᵢ|H)
+          </code>
+          Asumsi: setiap faktor risiko <b>independen satu sama lain</b>.<br>
+          Komputasi dilakukan di <b>log-space</b> untuk stabilitas numerik.
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="method-box" style="background:#f0fdf4;border-color:#bbf7d0">
+        <div style="font-size:14px;font-weight:800;color:#065f46;margin-bottom:12px">
+          📊 Klasifikasi Level Risiko
+        </div>
+        <div style="font-size:12.5px;color:#374151;line-height:2">
+          Berdasarkan nilai <b>posterior probability P(H|E):</b><br>
+          <div class="d-flex align-items-center gap-2 my-1">
+            <span class="risk-high">High Risk</span>
+            <span>→ P(H|E) ≥ 0.75 (skor ≥ 75)</span>
+          </div>
+          <div class="d-flex align-items-center gap-2 my-1">
+            <span class="risk-medium">Medium Risk</span>
+            <span>→ P(H|E) ∈ [0.45, 0.75)</span>
+          </div>
+          <div class="d-flex align-items-center gap-2 my-1">
+            <span class="risk-low">Low Risk</span>
+            <span>→ P(H|E) &lt; 0.45</span>
+          </div>
+          <br>
+          <b>Risk Score:</b> nilai posterior × 100, ditampilkan sebagai progress bar 0–100.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="method-box" style="background:#fff7ed;border-color:#fed7aa">
+        <div style="font-size:13px;font-weight:800;color:#c2410c;margin-bottom:10px">🎯 Konversi Mata Kuliah</div>
+        <div style="font-size:12px;color:#374151;line-height:2">
+          ✅ <b>Statistika Bayesian</b> — prior, likelihood, posterior<br>
+          ✅ <b>Kecerdasan Buatan</b> — Naive Bayes classifier<br>
+          ✅ <b>Data Mining</b> — feature extraction & scoring<br>
+          ✅ <b>Sistem Pendukung Keputusan</b> — risk-based decision<br>
+          ✅ <b>Manajemen Risiko</b> — multi-factor risk scoring<br>
+          ✅ <b>Komputasi Statistika</b> — log-space computation
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="method-box" style="background:#eff6ff;border-color:#bfdbfe">
+        <div style="font-size:13px;font-weight:800;color:#1e40af;margin-bottom:10px">⚙️ Pipeline Teknis</div>
+        <div style="font-size:12px;color:#374151;line-height:2">
+          1. Query data dari PostgreSQL<br>
+          2. Ekstrak 7 evidence per record<br>
+          3. Hitung log-likelihood setiap evidence<br>
+          4. Aggregate dengan log prior<br>
+          5. Normalisasi → posterior probability<br>
+          6. Klasifikasi ke High / Medium / Low<br>
+          7. Render ke tabel + visualisasi
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="method-box" style="background:#fef9c3;border-color:#fde68a">
+        <div style="font-size:13px;font-weight:800;color:#713f12;margin-bottom:10px">📌 Asumsi & Limitasi</div>
+        <div style="font-size:12px;color:#374151;line-height:2">
+          ⚠️ Naive Bayes mengasumsikan independence antar faktor<br>
+          ⚠️ Prior 15% bersifat expert-based, bukan dari data historis<br>
+          ⚠️ Likelihood ditetapkan secara domain knowledge<br>
+          ✅ Dapat dikalibrasi ulang dengan data historis yang lebih banyak<br>
+          ✅ Skor bersifat relatif, bukan probabilitas absolut
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PAL = ['#e02424', '#ff8a4c', '#0e9f6e', '#9061f9', '#1a56db', '#16bdca', '#d61f69', '#31c48d'];
+
+// ── Ambil filter params ───────────────────────────────────
+function getParams(extra = {}) {
+  const p = new URLSearchParams({
+    tahun:        document.getElementById('fTahun').value,
+    jenis_sarana: document.getElementById('fSarana').value,
+    kategori:     document.getElementById('fKategori').value,
+    ...extra,
+  });
+  return p.toString();
+}
+
+// ── Load all ──────────────────────────────────────────────
+function loadAll() {
+  loadSummary();
+  loadTable(1);
+}
+
+document.addEventListener('DOMContentLoaded', loadAll);
+
+// ── REFRESH BUTTON ──────────────────────────────────────────
+// Forces the backend to bypass its cache and recompute the Bayesian
+// analysis from scratch for the current filter selection, even if
+// the underlying row count hasn't changed. Use this if you want to
+// be certain you're seeing the very latest snapshot.
+function refreshData() {
+  const btn = document.getElementById('btnRefresh');
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:12px;height:12px"></span> Memperbarui...';
+
+  fetch(`/bayesian/api/refresh?${getParams()}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(() => {
+      loadAll();
+    })
+    .catch(err => {
+      console.error('Refresh failed:', err);
+      alert('Gagal memperbarui data. Coba lagi.');
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    });
+}
+
+function _fmtCacheTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+// ── SUMMARY ───────────────────────────────────────────────
+function loadSummary() {
+  fetch(`/bayesian/api/summary?${getParams()}`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('kHigh').textContent   = fmt(d.high);
+      document.getElementById('kMedium').textContent = fmt(d.medium);
+      document.getElementById('kLow').textContent    = fmt(d.low);
+      document.getElementById('kAvg').textContent    = ((d.avg_probability || 0) * 100).toFixed(1) + '%';
+      document.getElementById('fInfo').textContent   = `${fmt(d.total)} rekaman dianalisis`;
+
+      // Cache status — lets the user see WHEN this snapshot was taken
+      // and whether it came from cache (stable) or was just computed.
+      const meta = d._meta || {};
+      const tag  = meta.from_cache
+        ? `📌 Tersimpan sejak ${_fmtCacheTime(meta.computed_at)}`
+        : `🔄 Baru dihitung — ${_fmtCacheTime(meta.computed_at)}`;
+      document.getElementById('fCacheInfo').textContent = tag;
+
+      // Donut
+      Plotly.newPlot('cDonut', [{
+        labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+        values: [d.high, d.medium, d.low],
+        type: 'pie', hole: .5,
+        marker: { colors: ['#e02424', '#ff8a4c', '#0e9f6e'], line: { color: '#fff', width: 2 } },
+        textinfo: 'label+percent',
+        textfont: { size: 11 },
+        hovertemplate: '<b>%{label}</b><br>%{value:,.0f}<br>%{percent:.1%}<extra></extra>',
+      }], {
+        paper_bgcolor: 'transparent',
+        margin: { t: 10, r: 10, b: 10, l: 10 },
+        annotations: [{ text: fmt(d.total) + '<br><span style="font-size:10px">data</span>', x: .5, y: .5, showarrow: false, font: { size: 14, family: 'Inter' } }],
+        showlegend: true, legend: { font: { size: 11 }, orientation: 'h', y: -0.15 },
+        font: { family: 'Inter' },
+      }, { responsive: true, displayModeBar: false });
+
+      // Histogram skor
+      const hist = d.risk_distribution || [];
+      Plotly.newPlot('cHist', [{
+        x: hist.map(r => r.range),
+        y: hist.map(r => r.count),
+        type: 'bar',
+        marker: {
+          color: hist.map((_, i) => {
+            const score = i * 10;
+            return score >= 70 ? '#e02424' : score >= 40 ? '#ff8a4c' : '#0e9f6e';
+          }),
+          opacity: 0.85, line: { width: 0 },
+        },
+        text: hist.map(r => r.count), textposition: 'outside',
+      }], {
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        margin: { t: 8, r: 20, b: 45, l: 55 },
+        xaxis: { showgrid: false, zeroline: false, title: 'Rentang Skor' },
+        yaxis: { gridcolor: '#f3f4f6', zeroline: false, title: 'Frekuensi' },
+        font: { family: 'Inter', size: 11 },
+      }, { responsive: true, displayModeBar: false });
+
+      // Top factors bar
+      const tf = (d.top_factors || []).sort((a, b) => a.count - b.count);
+      Plotly.newPlot('cFactors', [{
+        x: tf.map(r => r.count),
+        y: tf.map(r => r.factor.length > 35 ? r.factor.substring(0, 35) + '…' : r.factor),
+        type: 'bar', orientation: 'h',
+        marker: { color: '#9061f9', opacity: .8, line: { width: 0 } },
+        text: tf.map(r => r.count), textposition: 'outside',
+      }], {
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        margin: { t: 5, r: 50, b: 15, l: 240 },
+        xaxis: { showgrid: false, zeroline: false },
+        yaxis: { showgrid: false, tickfont: { size: 11 } },
+        font: { family: 'Inter' },
+      }, { responsive: true, displayModeBar: false });
+
+      // Juga render di tab faktor
+      Plotly.newPlot('cFactorDetail', [{
+        x: tf.map(r => r.count),
+        y: tf.map(r => r.factor.length > 35 ? r.factor.substring(0, 35) + '…' : r.factor),
+        type: 'bar', orientation: 'h',
+        marker: {
+          color: tf.map((_, i) => PAL[i % PAL.length]),
+          opacity: 0.85, line: { width: 0 },
+        },
+        text: tf.map(r => `${r.count} (${r.pct}%)`), textposition: 'outside',
+      }], {
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        margin: { t: 5, r: 80, b: 15, l: 250 },
+        xaxis: { showgrid: false, zeroline: false },
+        yaxis: { showgrid: false, tickfont: { size: 11 } },
+        font: { family: 'Inter' },
+      }, { responsive: true, displayModeBar: false });
+
+      // Sarana bar
+      const ss = (d.risk_by_sarana || []).sort((a, b) => b.pct_high - a.pct_high).slice(0, 8);
+      Plotly.newPlot('cSarana', [{
+        x: ss.map(r => r.jenis_sarana),
+        y: ss.map(r => r.pct_high),
+        type: 'bar',
+        marker: {
+          color: ss.map(r => r.pct_high >= 30 ? '#e02424' : r.pct_high >= 15 ? '#ff8a4c' : '#0e9f6e'),
+          opacity: 0.85, line: { width: 0 },
+        },
+        text: ss.map(r => r.pct_high + '%'), textposition: 'outside',
+      }], {
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        margin: { t: 8, r: 20, b: 70, l: 50 },
+        xaxis: { showgrid: false, zeroline: false, tickangle: -30 },
+        yaxis: { gridcolor: '#f3f4f6', zeroline: false, title: '% High Risk' },
+        font: { family: 'Inter', size: 11 },
+      }, { responsive: true, displayModeBar: false });
+    });
+}
+
+// ── TABLE ─────────────────────────────────────────────────
+function loadTable(page) {
+  const mode   = document.getElementById('tMode').value;
+  const search = document.getElementById('tSearch').value;
+  const params = getParams({ mode, page, per_page: 50, search });
+
+  fetch(`/bayesian/api/data?${params}`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('tInfo').textContent   = `${fmt(d.total)} rekaman`;
+      document.getElementById('tPgInfo').textContent = `Halaman ${d.page} dari ${d.pages}`;
+
+      const offset = (page - 1) * 50;
+      document.getElementById('tbData').innerHTML = (d.data || []).map((r, i) => {
+        const riskBadge = r.risk_level === 'High Risk'
+          ? '<span class="risk-high">🔴 High</span>'
+          : r.risk_level === 'Medium Risk'
+          ? '<span class="risk-medium">🟡 Medium</span>'
+          : '<span class="risk-low">🟢 Low</span>';
+
+        const barColor = r.risk_score >= 75 ? '#e02424' : r.risk_score >= 45 ? '#ff8a4c' : '#0e9f6e';
+        const scoreBar = `
+          <div class="d-flex align-items-center gap-1">
+            <span style="font-size:11px;font-weight:700;color:${barColor};width:28px">${r.risk_score}</span>
+            <div class="score-bar-wrap">
+              <div class="score-bar-fill" style="width:${r.risk_score}%;background:${barColor}"></div>
+            </div>
+          </div>`;
+
+        const reasons = r.reasons_list && r.reasons_list.length
+          ? r.reasons_list.slice(0, 2).map(x =>
+              `<span class="ev-tag ev-yes">${x.length > 25 ? x.substring(0, 25) + '…' : x}</span>`
+            ).join('') + (r.reasons_list.length > 2 ? `<span class="ev-tag" style="background:#f3f4f6;color:#6b7280">+${r.reasons_list.length - 2}</span>` : '')
+          : '<span class="ev-tag ev-no">Tidak ada faktor</span>';
+
+        return `<tr>
+          <td class="text-muted">${offset + i + 1}</td>
+          <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nama_obat}">${r.nama_obat || '-'}</td>
+          <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.tujuan}">${r.tujuan || '-'}</td>
+          <td style="font-size:11.5px">${r.kota || '-'}</td>
+          <td class="text-end fw-bold">${fmt(r.jumlah)}</td>
+          <td><span class="badge" style="background:#eff6ff;color:#1e40af;font-size:10.5px">${r.jenis_sarana || '-'}</span></td>
+          <td style="font-size:11px;color:#6b7280">${r.tanggal_penyaluran || '-'}</td>
+          <td class="text-center">${riskBadge}</td>
+          <td>${scoreBar}</td>
+          <td>${reasons}</td>
+        </tr>`;
+      }).join('');
+
+      buildPagination(d.page, d.pages);
+    });
+}
+
+function buildPagination(cur, total) {
+  const ul = document.getElementById('tPagination');
+  let html = '';
+  if (cur > 1) html += `<li class="page-item"><a class="page-link" href="#" onclick="loadTable(${cur-1});return false">‹</a></li>`;
+  for (let i = Math.max(1, cur - 2); i <= Math.min(total, cur + 2); i++) {
+    html += `<li class="page-item ${i === cur ? 'active' : ''}">
+      <a class="page-link" href="#" onclick="loadTable(${i});return false">${i}</a></li>`;
+  }
+  if (cur < total) html += `<li class="page-item"><a class="page-link" href="#" onclick="loadTable(${cur+1});return false">›</a></li>`;
+  ul.innerHTML = html;
+}
+
+// ── Tab switch ─────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+{% endblock %}

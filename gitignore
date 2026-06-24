@@ -1,0 +1,37 @@
+# =========================================================
+# .gitignore
+# =========================================================
+
+# ── Secrets — JANGAN PERNAH commit file ini ────────────────
+.env
+*.env
+!.env.example
+
+# ── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+ENV/
+.venv/
+
+# ── Flask / uploads sementara ───────────────────────────────
+staging/
+exports/
+uploads/
+*.pkl
+
+# ── Database lokal (kalau ada sisa testing SQLite) ──────────
+*.db
+*.sqlite3
+
+# ── IDE / OS ─────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log

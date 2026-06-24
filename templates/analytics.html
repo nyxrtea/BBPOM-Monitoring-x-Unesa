@@ -1,0 +1,1089 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics — BPOM Monitor{% endblock %}
+
+{% block topbar_title %}
+<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Analytics Dashboard
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+/* ── Peta Leaflet (Sebaran Distribusi per Kota/Kab) ── */
+#cPetaMap{height:400px;border-radius:0 0 12px 12px;position:relative;z-index:1}
+.peta-legend{background:#fff;border-radius:8px;padding:8px 12px;box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:11px;line-height:1.6}
+.peta-legend-box{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.peta-tooltip{font-family:'Inter',sans-serif;font-size:12px;line-height:1.5}
+.peta-tooltip b{color:#1a56db}
+
+/* ── Filter Bar ── */
+.filter-bar{background:#fff;border-radius:12px;padding:14px 18px;margin-bottom:20px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.05);border-left:4px solid #1a56db}
+
+/* ── KPI Grid ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi-card{background:#fff;border-radius:12px;padding:16px 18px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.05);transition:transform .18s,box-shadow .18s;position:relative;overflow:hidden}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.1)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
+.kc-blue::before{background:#1a56db}.kc-green::before{background:#0e9f6e}
+.kc-amber::before{background:#ff8a4c}.kc-purple::before{background:#9061f9}
+.kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280}
+.kpi-value{font-size:28px;font-weight:800;color:#111827;line-height:1.1;margin:5px 0 3px}
+.kpi-sub{font-size:11px;color:#9ca3af}
+
+/* ── Tabs ── */
+.tab-bar{background:#fff;border-radius:12px;padding:8px 10px;margin-bottom:18px;border:1px solid #e5e7eb;display:flex;flex-wrap:wrap;gap:4px}
+.tbtn{padding:7px 14px;border:none;border-radius:8px;background:transparent;font-size:12.5px;font-weight:600;color:#6b7280;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .18s;font-family:inherit;white-space:nowrap}
+.tbtn i{font-size:14px}
+.tbtn:hover{background:#eff6ff;color:#1a56db}
+.tbtn.active{background:#1a56db;color:#fff;box-shadow:0 3px 10px rgba(26,86,219,.3)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── Chart Card ── */
+.cc{background:#fff;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:14px;overflow:hidden}
+.cc-hd{padding:13px 18px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
+.cc-title{font-size:13.5px;font-weight:700;color:#111827}
+.cc-sub{font-size:11px;color:#9ca3af;margin-top:1px}
+.cc-body{padding:14px}
+
+/* ── Rank Cards ── */
+.rank-card{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;margin-bottom:7px;border:1px solid #e5e7eb;transition:all .18s;background:#f9fafb}
+.rank-card:hover{background:#eff6ff;border-color:#bfdbfe}
+.rank-card.hl{background:#1a56db;border-color:#1a56db;color:#fff}
+.rank-num{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0;background:#fff;color:#1a56db}
+.rank-card.hl .rank-num{background:rgba(255,255,255,.2);color:#fff}
+.rank-name{flex:1;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#374151}
+.rank-card.hl .rank-name{color:#fff}
+.rank-val{font-size:13px;font-weight:700;color:#1a56db;white-space:nowrap}
+.rank-card.hl .rank-val{color:#ffd700}
+.rank-pct{font-size:10.5px;color:#9ca3af}
+.rank-card.hl .rank-pct{color:rgba(255,255,255,.6)}
+
+/* ── Prop rows ── */
+.prop-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f3f4f6}
+.prop-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.prop-name{flex:1;font-size:13px;color:#374151}
+.prop-val{font-size:12.5px;font-weight:700;color:#1a56db}
+.prop-pct{font-size:10.5px;color:#9ca3af}
+
+/* ── Search dropdown ── */
+.search-wrap{position:relative}
+.search-drop{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #d1d5db;border-top:none;border-radius:0 0 9px 9px;max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 8px 20px rgba(0,0,0,.1);display:none}
+.search-item{padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6;transition:background .15s}
+.search-item:hover{background:#eff6ff;color:#1a56db}
+.search-item mark{background:#fef08a;border-radius:2px;padding:0 2px}
+
+/* ── Bulan chips ── */
+.chips{display:flex;flex-wrap:wrap;gap:5px;padding:8px 0}
+.chip{padding:4px 12px;border-radius:20px;border:1.5px solid #d1d5db;font-size:11.5px;font-weight:600;cursor:pointer;background:#fff;color:#6b7280;font-family:inherit;transition:all .18s}
+.chip:hover{border-color:#1a56db;color:#1a56db}
+.chip.active{background:#1a56db;border-color:#1a56db;color:#fff}
+
+/* ── Download ── */
+.col-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:7px;padding:14px}
+.col-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;border:1.5px solid #d1d5db;cursor:pointer;font-size:12.5px;transition:all .15s;font-family:inherit}
+.col-item:hover,.col-item.on{border-color:#1a56db;background:#eff6ff}
+.col-item input{accent-color:#1a56db}
+
+/* ── Table ── */
+.tbl-an th{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;padding:9px 13px;background:#f9fafb;border-bottom:2px solid #e5e7eb;white-space:nowrap}
+.tbl-an td{font-size:12.5px;padding:9px 13px;border-color:#f3f4f6;vertical-align:middle}
+.tbl-an tbody tr:hover{background:#f9fafb}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:40px;color:#9ca3af}
+.empty i{font-size:40px;display:block;margin-bottom:10px;opacity:.4}
+
+@media(max-width:767px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .tbtn{padding:6px 10px;font-size:11.5px}
+  .tbtn i{display:none}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- FILTER -->
+<form id="fForm" class="filter-bar" method="GET" action="/analytics/">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-2">
+      <label class="form-label small fw-semibold mb-1">Tahun</label>
+      <select name="tahun" class="form-select form-select-sm">
+        <option value="">Semua</option>
+        {% for t in tahun_list %}<option value="{{ t }}" {% if filters.tahun==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small fw-semibold mb-1">Provinsi</label>
+      <select name="provinsi" class="form-select form-select-sm">
+        <option value="">Semua</option>
+        {% for p in provinsi_list %}<option value="{{ p }}" {% if filters.provinsi==p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small fw-semibold mb-1">Kategori</label>
+      <select name="kategori" class="form-select form-select-sm">
+        <option value="">Semua</option>
+        {% for k in kategori_list %}<option value="{{ k }}" {% if filters.kategori==k %}selected{% endif %}>{{ k }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small fw-semibold mb-1">Jenis Sarana</label>
+      <select name="jenis_sarana" class="form-select form-select-sm">
+        <option value="">Semua</option>
+        {% for s in sarana_list %}<option value="{{ s }}" {% if filters.jenis_sarana==s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1">Cari Tujuan</label>
+      <input type="text" name="search" class="form-control form-control-sm" placeholder="Nama apotek / RS..." value="{{ filters.search }}">
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm" title="Terapkan Filter"><i class="bi bi-search"></i></button>
+      <a href="/analytics/" class="btn btn-outline-secondary btn-sm ms-1" title="Reset Filter"><i class="bi bi-x-lg"></i></a>
+    </div>
+  </div>
+  {% if filters.tahun or filters.provinsi or filters.kategori or filters.jenis_sarana or filters.search %}
+  <div class="mt-2 d-flex flex-wrap gap-1 align-items-center">
+    <span class="text-muted small me-1"><i class="bi bi-funnel-fill text-primary"></i> Filter aktif:</span>
+    {% if filters.tahun %}<span class="badge" style="background:#eff6ff;color:#1a56db;border:1px solid #bfdbfe">Tahun: {{ filters.tahun }}</span>{% endif %}
+    {% if filters.provinsi %}<span class="badge" style="background:#eff6ff;color:#1a56db;border:1px solid #bfdbfe">Provinsi: {{ filters.provinsi }}</span>{% endif %}
+    {% if filters.kategori %}<span class="badge" style="background:#eff6ff;color:#1a56db;border:1px solid #bfdbfe">Kategori: {{ filters.kategori }}</span>{% endif %}
+    {% if filters.jenis_sarana %}<span class="badge" style="background:#eff6ff;color:#1a56db;border:1px solid #bfdbfe">Sarana: {{ filters.jenis_sarana }}</span>{% endif %}
+    {% if filters.search %}<span class="badge" style="background:#eff6ff;color:#1a56db;border:1px solid #bfdbfe">Cari: {{ filters.search }}</span>{% endif %}
+  </div>
+  {% endif %}
+</form>
+
+<!-- KPI -->
+<div class="kpi-grid">
+  <div class="kpi-card kc-blue">
+    <div class="kpi-label">Total Transaksi</div>
+    <div class="kpi-value" id="kTrx">—</div>
+    <div class="kpi-sub">Rekaman distribusi</div>
+  </div>
+  <div class="kpi-card kc-green">
+    <div class="kpi-label">Total Distribusi (Pcs)</div>
+    <div class="kpi-value" id="kQty">—</div>
+    <div class="kpi-sub">Unit terdistribusi</div>
+  </div>
+  <div class="kpi-card kc-purple">
+    <div class="kpi-label">Jenis Obat</div>
+    <div class="kpi-value" id="kObat">—</div>
+    <div class="kpi-sub">Nama obat unik</div>
+  </div>
+  <div class="kpi-card kc-amber">
+    <div class="kpi-label">⚠️ Hampir Expired</div>
+    <div class="kpi-value" id="kExp">—</div>
+    <div class="kpi-sub">Kadaluwarsa &lt; 3 bulan</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <button class="tbtn active" onclick="switchTab('tren',this)"><i class="bi bi-graph-up"></i>Tren Distribusi</button>
+  <button class="tbtn" onclick="switchTab('peta',this)"><i class="bi bi-map"></i>Peta</button>
+  <button class="tbtn" onclick="switchTab('obat',this)"><i class="bi bi-capsule-pill"></i>Analisis Obat</button>
+  <button class="tbtn" onclick="switchTab('produsen',this)"><i class="bi bi-building"></i>Produsen</button>
+  <button class="tbtn" onclick="switchTab('pbf',this)"><i class="bi bi-truck"></i>PBF</button>
+  <button class="tbtn" onclick="switchTab('sarana',this)"><i class="bi bi-hospital"></i>Jenis Sarana</button>
+  <button class="tbtn" onclick="switchTab('cari',this)"><i class="bi bi-search-heart"></i>Cari Sarana</button>
+  <button class="tbtn" onclick="switchTab('unduh',this)"><i class="bi bi-download"></i>Unduh Data</button>
+</div>
+
+<!-- ═══ TAB 1: TREN ═══ -->
+<div class="tab-panel active" id="tab-tren">
+  <div class="cc">
+    <div class="cc-hd"><div><div class="cc-title">📈 Tren Distribusi Bulanan</div><div class="cc-sub">Total distribusi per bulan</div></div></div>
+    <div class="cc-body"><div id="cTren" style="height:300px"></div></div>
+  </div>
+  <div class="cc">
+    <div class="cc-hd"><div class="cc-title">📅 Detail Bulanan</div><div class="cc-sub">Klik bulan untuk detail harian & rekap apotek</div></div>
+    <div class="cc-body">
+      <div class="chips" id="chips"></div>
+      <div id="detailSec" style="display:none">
+        <div class="row g-3 mb-3">
+          <div class="col-6 col-md-3"><div class="kpi-card kc-blue" style="padding:12px"><div class="kpi-label">Transaksi</div><div class="kpi-value" id="dTrx" style="font-size:20px">—</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi-card kc-green" style="padding:12px"><div class="kpi-label">Distribusi</div><div class="kpi-value" id="dQty" style="font-size:20px">—</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi-card" style="padding:12px"><div class="kpi-label">Apotek Aktif</div><div class="kpi-value" id="dApotek" style="font-size:12px;word-break:break-word">—</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi-card kc-amber" style="padding:12px"><div class="kpi-label">Trx Apotek</div><div class="kpi-value" id="dTopTrx" style="font-size:20px">—</div></div></div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-5"><div class="fw-700 mb-2" style="font-size:13px">Distribusi Harian</div><div id="cHarian" style="height:220px"></div></div>
+          <div class="col-md-7">
+            <div class="fw-700 mb-2" style="font-size:13px">Rekap per Apotek</div>
+            <div style="max-height:260px;overflow-y:auto">
+              <table class="table table-sm tbl-an mb-0"><thead><tr><th>Apotek</th><th>Kota</th><th>Obat</th><th class="text-end">Transaksi</th><th class="text-end">Total (Pcs)</th></tr></thead><tbody id="tbRekap"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 2: PETA ═══ -->
+<div class="tab-panel" id="tab-peta">
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="cc">
+        <div class="cc-hd">
+          <div><div class="cc-title">🗺️ Sebaran Distribusi per Kota/Kab</div><div class="cc-sub">Ukuran area proporsional dengan volume</div></div>
+          <div id="mapLegend" style="font-size:11px;display:flex;gap:5px;flex-wrap:wrap"></div>
+        </div>
+        <div class="cc-body" style="padding:0"><div id="cPetaMap"></div></div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="cc h-100"><div class="cc-hd"><div class="cc-title">🏙️ Top 10 Kota/Kab</div></div><div class="cc-body"><div id="cTopKota" style="height:380px"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 3: OBAT ═══ -->
+<div class="tab-panel" id="tab-obat">
+  <div class="row g-3 mb-3">
+    <div class="col-md-6"><div class="cc h-100"><div class="cc-hd"><div class="cc-title">💊 Top 5 Obat</div></div><div class="cc-body" id="top5"></div></div></div>
+    <div class="col-md-6"><div class="cc h-100"><div class="cc-hd"><div class="cc-title">💊 Top 6–10 Obat</div></div><div class="cc-body" id="top610"></div></div></div>
+  </div>
+  <div class="cc">
+    <div class="cc-hd">
+      <div class="cc-title">Semua Obat</div>
+      <input type="text" id="obatQ" class="form-control form-control-sm" style="width:200px" placeholder="Filter obat..." oninput="filterObat(this.value)">
+    </div>
+    <div class="cc-body"><div id="cObat" style="height:360px"></div></div>
+  </div>
+</div>
+
+<!-- ═══ TAB 4: PRODUSEN ═══ -->
+<div class="tab-panel" id="tab-produsen">
+  <div class="row g-3 mb-3">
+    <div class="col-md-5"><div class="cc h-100"><div class="cc-hd"><div class="cc-title">🏭 Top 5 Produsen</div></div><div class="cc-body"><div id="cProdPie" style="height:300px"></div></div></div></div>
+    <div class="col-md-7"><div class="cc h-100"><div class="cc-hd"><div class="cc-title">📑 Proporsi per Produsen</div></div><div class="cc-body" id="prodRows" style="max-height:320px;overflow-y:auto"></div></div></div>
+  </div>
+  <div class="cc">
+    <div class="cc-hd"><div class="cc-title">⚠️ Obat Mendekati Expired per Produsen</div></div>
+    <div class="cc-body">
+      <div class="row g-2 mb-3">
+        <div class="col-md-4"><select id="prodSel" class="form-select form-select-sm"><option value="">-- Pilih Produsen --</option></select></div>
+        <div class="col-auto"><button class="btn btn-primary btn-sm" onclick="loadProdExp()"><i class="bi bi-search me-1"></i>Tampilkan</button></div>
+      </div>
+      <div style="max-height:300px;overflow-y:auto">
+        <table class="table table-sm tbl-an mb-0"><thead><tr><th>Produsen</th><th>Nama Obat</th><th class="text-end">Jumlah</th></tr></thead><tbody id="tbProdExp"><tr><td colspan="3" class="text-center text-muted py-3">Pilih produsen</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 5: PBF ═══ -->
+<div class="tab-panel" id="tab-pbf">
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="kpi-card kc-blue" style="padding:14px"><div class="kpi-label">PBF Terbesar</div><div class="kpi-value" id="kPbfTop" style="font-size:13px;word-break:break-word;line-height:1.4">—</div></div></div>
+    <div class="col-6 col-md-3"><div class="kpi-card kc-green" style="padding:14px"><div class="kpi-label">Jumlah PBF</div><div class="kpi-value" id="kPbfTotal">—</div></div></div>
+  </div>
+  <div class="cc mb-3"><div class="cc-hd"><div class="cc-title">🚚 Top 10 PBF</div></div><div class="cc-body"><div id="cPBF" style="height:360px"></div></div></div>
+  <div class="cc">
+    <div class="cc-hd">
+      <div class="cc-title">🔍 Cari PBF</div>
+    </div>
+    <div class="cc-body">
+      <div class="input-group mb-3" style="max-width:340px">
+        <input type="text" id="pbfQ" class="form-control form-control-sm" placeholder="Ketik nama PBF...">
+        <button class="btn btn-sm btn-primary" onclick="searchPBF()"><i class="bi bi-search"></i></button>
+      </div>
+      <div style="max-height:360px;overflow-y:auto">
+        <table class="table table-sm tbl-an mb-0"><thead><tr><th>Nama PBF</th><th class="text-end">Total Distribusi</th><th class="text-end">Transaksi</th></tr></thead><tbody id="tbPBF"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 6: SARANA ═══ -->
+<div class="tab-panel" id="tab-sarana">
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="kpi-card kc-blue" style="padding:14px"><div class="kpi-label">Jenis Sarana</div><div class="kpi-value" id="kSarJenis">—</div></div></div>
+    <div class="col-6 col-md-3"><div class="kpi-card kc-green" style="padding:14px"><div class="kpi-label">Sarana Terbesar</div><div class="kpi-value" id="kSarTop" style="font-size:13px;word-break:break-word;line-height:1.4">—</div></div></div>
+    <div class="col-6 col-md-3"><div class="kpi-card kc-amber" style="padding:14px"><div class="kpi-label">Distribusi Terbesar</div><div class="kpi-value" id="kSarMax" style="font-size:20px">—</div><div class="kpi-sub">Pcs</div></div></div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-md-7"><div class="cc h-100"><div class="cc-hd"><div class="cc-title">📊 Volume per Jenis Sarana</div></div><div class="cc-body"><div id="cSarBar" style="height:300px"></div></div></div></div>
+    <div class="col-md-5"><div class="cc h-100"><div class="cc-hd"><div class="cc-title">📊 Proporsi</div></div><div class="cc-body"><div id="cSarPie" style="height:300px"></div></div></div></div>
+  </div>
+  <div class="cc">
+    <div class="cc-hd">
+      <div class="cc-title">📋 Detail per Sarana</div>
+      <input type="text" class="form-control form-control-sm" style="width:190px" placeholder="Filter..." oninput="filterSarDetail(this.value)">
+    </div>
+    <div style="max-height:340px;overflow-y:auto">
+      <table class="table table-sm tbl-an mb-0"><thead><tr><th>Jenis</th><th>Nama Sarana</th><th>Kota</th><th class="text-end">Total (Pcs)</th><th class="text-end">Transaksi</th></tr></thead><tbody id="tbSarDetail"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 7: CARI SARANA ═══ -->
+<div class="tab-panel" id="tab-cari">
+  <div class="cc">
+    <div class="cc-hd"><div class="cc-title">🏥 Pencarian Sarana &amp; Detail Distribusi</div><div class="cc-sub">Ketik minimal 3 huruf</div></div>
+    <div class="cc-body">
+      <div class="search-wrap" style="max-width:480px;margin-bottom:16px">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" id="sarQ" class="form-control border-start-0" placeholder="Nama apotek, RS, klinik..." oninput="onSarSearch(this.value)">
+          <button class="btn btn-outline-secondary" type="button" onclick="clearSarSearch()"><i class="bi bi-x"></i></button>
+        </div>
+        <div class="search-drop" id="sarDrop"></div>
+      </div>
+
+      <div id="sarHint" class="empty"><i class="bi bi-search"></i>Ketik nama sarana untuk memulai pencarian</div>
+
+      <div id="sarDetail" style="display:none">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <i class="bi bi-hospital-fill text-primary fs-5"></i>
+          <h6 class="mb-0 fw-bold" id="sarTitle" style="color:#111827"></h6>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6 col-md-3"><div class="kpi-card kc-blue" style="padding:12px"><div class="kpi-label">Transaksi</div><div class="kpi-value" id="sdTrx" style="font-size:20px">—</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi-card kc-green" style="padding:12px"><div class="kpi-label">Distribusi</div><div class="kpi-value" id="sdQty" style="font-size:20px">—</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi-card" style="padding:12px"><div class="kpi-label">Jenis Obat</div><div class="kpi-value" id="sdJObat" style="font-size:20px">—</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi-card kc-amber" style="padding:12px"><div class="kpi-label">Hampir Expired</div><div class="kpi-value" id="sdExp" style="font-size:20px">—</div></div></div>
+        </div>
+        <div class="cc mb-3">
+          <div class="cc-hd"><div class="cc-title">Daftar Obat</div><input type="text" id="sdObatQ" class="form-control form-control-sm" style="width:190px" placeholder="Filter..." oninput="filterSdObat(this.value)"></div>
+          <div style="max-height:260px;overflow-y:auto"><table class="table table-sm tbl-an mb-0"><thead><tr><th>Nama Obat</th><th class="text-end">Total</th><th class="text-end">Transaksi</th><th></th></tr></thead><tbody id="tbSdObat"></tbody></table></div>
+        </div>
+        <div class="cc mb-3"><div class="cc-hd"><div class="cc-title">Top 10 Obat</div></div><div class="cc-body"><div id="cSdTop" style="height:260px"></div></div></div>
+
+        <div id="trxSec" style="display:none">
+          <div class="cc">
+            <div class="cc-hd"><div><div class="cc-title" id="trxTitle">Riwayat Transaksi</div><div class="cc-sub" id="trxSub"></div></div></div>
+            <div class="cc-body">
+              <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3"><div class="kpi-card kc-blue" style="padding:12px"><div class="kpi-label">Total</div><div class="kpi-value" id="stQty" style="font-size:18px">—</div></div></div>
+                <div class="col-6 col-md-3"><div class="kpi-card kc-green" style="padding:12px"><div class="kpi-label">Transaksi</div><div class="kpi-value" id="stTrx" style="font-size:18px">—</div></div></div>
+                <div class="col-6 col-md-3"><div class="kpi-card" style="padding:12px"><div class="kpi-label">Produsen</div><div class="kpi-value" id="stProd" style="font-size:18px">—</div></div></div>
+                <div class="col-6 col-md-3"><div class="kpi-card kc-amber" style="padding:12px"><div class="kpi-label">Hampir Exp</div><div class="kpi-value" id="stExp" style="font-size:18px">—</div></div></div>
+              </div>
+              <div style="max-height:260px;overflow-y:auto;margin-bottom:12px"><table class="table table-sm tbl-an mb-0"><thead><tr><th>Tanggal</th><th class="text-end">Jumlah</th><th>Produsen</th><th>PBF</th><th>Kadaluwarsa</th></tr></thead><tbody id="tbTrx"></tbody></table></div>
+              <div id="cPbfChart" style="height:220px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 8: UNDUH ═══ -->
+<div class="tab-panel" id="tab-unduh">
+  <div class="cc">
+    <div class="cc-hd"><div class="cc-title">⬇️ Unduh Data Distribusi</div><div class="cc-sub">Pilih kolom dan mode unduh</div></div>
+    <div class="cc-body">
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="fw-bold mb-2" style="font-size:13px">Mode Dataset</div>
+          <div class="d-flex flex-column gap-2">
+            <label class="col-item on" id="mClean" onclick="setMode(this,'cleaned')">
+              <input type="radio" name="dlMode" value="cleaned" checked><div><strong>Data Terfilter</strong><br><small class="text-muted">Semua data sesuai filter aktif</small></div>
+            </label>
+            <label class="col-item" id="mTerbaru" onclick="setMode(this,'terbaru')">
+              <input type="radio" name="dlMode" value="terbaru"><div><strong>Data Terbaru</strong><br><small class="text-muted">N baris terbaru by tanggal</small></div>
+            </label>
+          </div>
+          <div id="nWrap" style="display:none;margin-top:10px">
+            <label class="form-label small fw-semibold">Jumlah Baris</label>
+            <input type="number" id="nRows" class="form-control form-control-sm" value="1000" min="10" max="100000" step="100">
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="fw-bold" style="font-size:13px">Pilih Kolom</div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-primary btn-sm" onclick="selAll()">✅ Semua</button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="clrAll()">❌ Hapus</button>
+            </div>
+          </div>
+          <div class="col-grid">
+            {% for col in kolom_tersedia %}
+            <label class="col-item on" onclick="toggleCol(this)">
+              <input type="checkbox" class="cbcol" value="{{ col }}" checked>
+              <span>{{ col }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <hr>
+      <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
+        <button class="btn btn-outline-primary" onclick="doPreview()"><i class="bi bi-eye me-1"></i>Preview</button>
+        <button class="btn btn-primary" onclick="doDownload()"><i class="bi bi-download me-1"></i>Download CSV</button>
+        <span class="text-muted small" id="dlInfo"></span>
+      </div>
+      <div id="pvSec" style="display:none">
+        <div class="fw-bold mb-2" style="font-size:13px">Preview Data</div>
+        <div class="row g-3 mb-3">
+          <div class="col-6 col-md-3"><div class="kpi-card" style="padding:10px"><div class="kpi-label">Total Baris</div><div class="kpi-value" id="pvTotal" style="font-size:20px">—</div></div></div>
+          <div class="col-6 col-md-3"><div class="kpi-card" style="padding:10px"><div class="kpi-label">Kolom</div><div class="kpi-value" id="pvKol" style="font-size:20px">—</div></div></div>
+        </div>
+        <div style="max-height:340px;overflow:auto"><table class="table table-sm tbl-an mb-0"><thead id="pvHead"></thead><tbody id="pvBody"></tbody></table></div>
+        <small class="text-muted">Menampilkan maks. 200 baris pertama.</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Constants ─────────────────────────────────────────────
+const QS   = {{ (("?" + request.query_string.decode()) if request.query_string else "") | tojson }};
+const API  = '/analytics/api';
+const PAL  = ['#1a56db','#0e9f6e','#e74694','#9061f9','#ff8a4c','#16bdca','#e02424','#31c48d','#6875f5','#d61f69'];
+
+function apiGet(path) {
+  const sep = QS ? '&' : '?';
+  return fetch(API + path + QS).then(r => r.json());
+}
+
+// ── Tab switch ─────────────────────────────────────────────
+const loaded = {};
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (!loaded[name]) { loaded[name] = true; runTab(name); }
+  // Leaflet needs invalidateSize() every time its container goes from
+  // display:none back to visible, not just on the very first load —
+  // otherwise tiles render misaligned/gray until the user pans/zooms.
+  if (name === 'peta' && _petaMap) {
+    setTimeout(() => _petaMap.invalidateSize(), 50);
+  }
+}
+const runners = {
+  tren: loadTren, peta: loadPeta, obat: loadObat,
+  produsen: loadProdusen, pbf: loadPBF, sarana: loadSarana,
+  cari: () => {}, unduh: () => {}
+};
+function runTab(n) { runners[n] && runners[n](); }
+
+// ── Init ───────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => { loaded.tren = true; loadTren(); });
+
+// ══════════════════════════════════════════════════════════
+// TAB 1: TREN
+// ══════════════════════════════════════════════════════════
+function loadTren() {
+  apiGet('/tren').then(d => {
+    const k = d.kpi || {};
+    document.getElementById('kTrx').textContent  = fmt(k.total_transaksi);
+    document.getElementById('kQty').textContent  = fmt(k.total_distribusi);
+    document.getElementById('kObat').textContent = fmt(k.jenis_obat);
+    document.getElementById('kExp').textContent  = fmt(k.hampir_expired);
+
+    const tr = d.tren_bulanan || [];
+    Plotly.newPlot('cTren', [{
+      x: tr.map(r=>r.bulan), y: tr.map(r=>r.jumlah),
+      type:'scatter', mode:'lines+markers',
+      line:{color:'#1a56db',width:2.5,shape:'spline'},
+      marker:{size:6,color:'#1a56db',line:{width:2,color:'#fff'}},
+      fill:'tozeroy', fillcolor:'rgba(26,86,219,.08)',
+      hovertemplate:'<b>%{x}</b><br>%{y:,.0f} Pcs<extra></extra>',
+    }], {
+      paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+      margin:{t:8,r:20,b:45,l:65},
+      xaxis:{showgrid:false,zeroline:false,tickangle:-30},
+      yaxis:{gridcolor:'#f3f4f6',zeroline:false},
+      hovermode:'x unified',font:{family:'Inter'},
+    }, {responsive:true,displayModeBar:false});
+
+    document.getElementById('chips').innerHTML =
+      (d.bulan_list || []).map(b =>
+        `<button class="chip" onclick="loadBulan('${b}',this)">${b}</button>`
+      ).join('');
+  });
+}
+
+function loadBulan(bulan, chip) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  document.getElementById('detailSec').style.display = 'block';
+
+  const sep = QS ? '&' : '?';
+  fetch(`${API}/tren/detail${QS}${sep}bulan=${bulan}`)
+    .then(r=>r.json()).then(d => {
+      const m = d.metrics || {};
+      document.getElementById('dTrx').textContent   = fmt(m.total_transaksi);
+      document.getElementById('dQty').textContent   = fmt(m.total_distribusi);
+      document.getElementById('dApotek').textContent = m.top_apotek || '—';
+      document.getElementById('dTopTrx').textContent = fmt(m.top_trx);
+
+      const h = d.harian || [];
+      Plotly.newPlot('cHarian', [{
+        x:h.map(r=>r.tanggal), y:h.map(r=>r.total),
+        type:'bar', marker:{color:'#0e9f6e',opacity:.8,line:{width:0}},
+      }], {
+        paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+        margin:{t:5,r:10,b:35,l:55},
+        xaxis:{showgrid:false,zeroline:false,tickangle:-30},
+        yaxis:{gridcolor:'#f3f4f6',zeroline:false},
+        font:{family:'Inter',size:11},
+      }, {responsive:true,displayModeBar:false});
+
+      document.getElementById('tbRekap').innerHTML =
+        (d.rekap_apotek || []).slice(0,100).map(r => `
+          <tr>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.apotek||'-'}</td>
+            <td>${r.kota||'-'}</td>
+            <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obat||'-'}</td>
+            <td class="text-end">${fmt(r.jumlah_transaksi)}</td>
+            <td class="text-end">${fmt(r.total_distribusi)}</td>
+          </tr>`).join('');
+    });
+}
+
+// ══════════════════════════════════════════════════════════
+// TAB 2: PETA
+// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// TAB 2: PETA — embedded Leaflet choropleth
+// ══════════════════════════════════════════════════════════
+// Reuses the same flat-colour approach as the standalone /map page:
+// blue fill for any kab/kota with distribution data, gray otherwise.
+// No magnitude gradient — the goal is simply showing WHICH regions
+// have data and HOW MUCH (via tooltip), respecting the analytics
+// page's existing filters (tahun, provinsi, kota, kategori, sarana).
+const PETA_COLOR_BERAT   = '#e02424';
+const PETA_COLOR_SEDANG  = '#ff8a4c';
+const PETA_COLOR_RINGAN  = '#0e9f6e';
+const PETA_COLOR_NO_DATA = '#e5e7eb';
+
+function _petaRiskColor(d) {
+  if (!d || !d.total) return PETA_COLOR_NO_DATA;
+  switch ((d.dist_level || 'ringan').toLowerCase()) {
+    case 'berat':  return PETA_COLOR_BERAT;
+    case 'sedang': return PETA_COLOR_SEDANG;
+    case 'ringan': return PETA_COLOR_RINGAN;
+    default:       return PETA_COLOR_NO_DATA;
+  }
+}
+
+let _petaMap        = null;   // Leaflet map instance — created once
+let _petaGeoLayer    = null;  // current GeoJSON layer
+let _petaGeoJsonData = null;  // cached static shapes (fetched once)
+let _petaKotaLookup  = {};    // {WILAYAH_UPPER: {total, persen, kategori}}
+
+function _petaFmtNum(n) { return (n || 0).toLocaleString('id-ID'); }
+
+function _petaStyle(feature) {
+  const wadmkk = feature.properties && feature.properties.WADMKK;
+  const key    = wadmkk ? wadmkk.toUpperCase() : '';
+  const d      = _petaKotaLookup[key];
+  const hasD   = !!(d && d.total > 0);
+  const fill   = _petaRiskColor(d);
+  return {
+    fillColor:   fill,
+    weight:      hasD ? 0.8 : 0.4,
+    color:       hasD ? '#374151' : '#cbd5e1',
+    fillOpacity: hasD ? 0.72 : 0.15,
+  };
+}
+
+function _petaTooltip(name, d) {
+  if (!d || !d.total) {
+    return `<div class="peta-tooltip"><b>${name}</b><br>Tidak ada data</div>`;
+  }
+  const lvl = (d.dist_level||'').toLowerCase() === 'berat' ? '🔴 Berat'
+            : (d.dist_level||'').toLowerCase() === 'sedang' ? '🟡 Sedang' : '🟢 Ringan';
+  return `
+    <div class="peta-tooltip">
+      <b>${name}</b><br>
+      Distribusi: <b>${lvl}</b><br>
+      Total: <b>${_petaFmtNum(d.total)}</b>
+    </div>`;
+}
+
+function _petaOnEachFeature(feature, layer) {
+  const wadmkk = feature.properties && feature.properties.WADMKK;
+  if (!wadmkk) return;
+  const key = wadmkk.toUpperCase();
+  const d   = _petaKotaLookup[key] || null;
+
+  const hasD = !!(d && d.total > 0);
+  layer.bindTooltip(_petaTooltip(wadmkk, d), { sticky: true, direction: 'auto' });
+
+  layer.on({
+    mouseover(e) {
+      e.target.setStyle({ weight: 2, color: '#1e293b', fillOpacity: hasD ? 0.92 : 0.35 });
+      e.target.bringToFront();
+    },
+    mouseout(e) { _petaGeoLayer.resetStyle(e.target); },
+    click(e) { _petaMap.fitBounds(e.target.getBounds(), { padding: [30, 30], maxZoom: 10 }); },
+  });
+}
+
+function _petaInitMap() {
+  if (_petaMap) return;   // already initialised — Leaflet errors if re-created on same div
+  _petaMap = L.map('cPetaMap', {
+    center: [-2.5, 118], zoom: 5, zoomControl: true, scrollWheelZoom: true,
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19,
+  }).addTo(_petaMap);
+
+  const legend = L.control({ position: 'bottomright' });
+  legend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'peta-legend');
+    div.innerHTML = `
+      <b>Distribusi Obat</b><br>
+      <span class="peta-legend-box" style="background:${PETA_COLOR_BERAT}"></span>Berat (tinggi)<br>
+      <span class="peta-legend-box" style="background:${PETA_COLOR_SEDANG}"></span>Sedang<br>
+      <span class="peta-legend-box" style="background:${PETA_COLOR_RINGAN}"></span>Ringan (rendah)<br>
+      <span class="peta-legend-box" style="background:${PETA_COLOR_NO_DATA}"></span>Tidak ada data`;
+    return div;
+  };
+  legend.addTo(_petaMap);
+}
+
+function _petaRenderLayer() {
+  if (!_petaGeoJsonData) return;
+  if (_petaGeoLayer) {
+    _petaMap.removeLayer(_petaGeoLayer);
+  }
+  _petaGeoLayer = L.geoJSON(_petaGeoJsonData, {
+    style: _petaStyle,
+    onEachFeature: _petaOnEachFeature,
+  }).addTo(_petaMap);
+}
+
+function loadPeta() {
+  apiGet('/peta').then(d => {
+    const kota = d.kota_data || [], top = d.top_kota || [];
+
+    // Build lookup keyed by UPPERCASE wilayah name for the choropleth.
+    // risk_level and pct_anomaly come from get_peta() → analytics_service.py
+    _petaKotaLookup = {};
+    kota.forEach(r => {
+      _petaKotaLookup[(r.wilayah || '').toUpperCase()] = r;
+    });
+
+    _petaInitMap();
+    // Fetch the static merged kab/kota shapes once, cache for subsequent reloads
+    if (_petaGeoJsonData) {
+      _petaRenderLayer();
+      setTimeout(() => _petaMap.invalidateSize(), 50);
+    } else {
+      fetch('/api/geojson/kota').then(r => r.json()).then(geo => {
+        _petaGeoJsonData = geo;
+        _petaRenderLayer();
+        setTimeout(() => _petaMap.invalidateSize(), 50);
+      }).catch(err => console.error('GeoJSON load failed:', err));
+    }
+
+    // Top 10 Kota/Kab bar chart — unchanged from before
+    const tk = top.sort((a,b)=>a.total-b.total);
+    Plotly.newPlot('cTopKota', [{
+      x:tk.map(r=>r.total), y:tk.map(r=>r.wilayah),
+      type:'bar', orientation:'h',
+      marker:{color:'#1a56db',opacity:.85,line:{width:0}},
+      text:tk.map(r=>fmt(r.total)), textposition:'outside',
+    }], {
+      paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+      margin:{t:5,r:55,b:15,l:150},
+      xaxis:{showgrid:false,zeroline:false},
+      yaxis:{showgrid:false,tickfont:{size:11}},
+      font:{family:'Inter'},
+    }, {responsive:true,displayModeBar:false});
+
+    // Header badge — show breakdown count per risk level
+    const nBerat  = Object.values(_petaKotaLookup).filter(r => r.dist_level === 'berat').length;
+    const nSedang = Object.values(_petaKotaLookup).filter(r => r.dist_level === 'sedang').length;
+    const nRingan = Object.values(_petaKotaLookup).filter(r => r.dist_level === 'ringan').length;
+    document.getElementById('mapLegend').innerHTML =
+      `<span class="badge" style="background:#fde8e8;color:#e02424">🔴 ${fmt(nBerat)} Berat</span>
+       <span class="badge" style="background:#fff0e6;color:#c2410c">🟡 ${fmt(nSedang)} Sedang</span>
+       <span class="badge" style="background:#dcfce7;color:#065f46">🟢 ${fmt(nRingan)} Ringan</span>`;
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// TAB 3: OBAT
+// ══════════════════════════════════════════════════════════
+let _obat = [];
+function loadObat() {
+  apiGet('/obat').then(d => {
+    _obat = d.obat_list || [];
+    const t10 = _obat.slice(0,10);
+
+    document.getElementById('top5').innerHTML = t10.slice(0,5).map(r => `
+      <div class="rank-card hl">
+        <div class="rank-num">${r.rank}</div>
+        <div style="flex:1;min-width:0"><div class="rank-name">${r.obat||'—'}</div><div class="rank-pct">${r.persen}%</div></div>
+        <div class="rank-val">${fmt(r.jumlah)}</div>
+      </div>`).join('');
+
+    document.getElementById('top610').innerHTML = t10.slice(5,10).map(r => `
+      <div class="rank-card">
+        <div class="rank-num">${r.rank}</div>
+        <div style="flex:1;min-width:0"><div class="rank-name">${r.obat||'—'}</div><div class="rank-pct">${r.persen}%</div></div>
+        <div class="rank-val">${fmt(r.jumlah)}</div>
+      </div>`).join('');
+
+    renderObat(_obat.slice(0,50));
+  });
+}
+function renderObat(data) {
+  const d = [...data].sort((a,b)=>a.jumlah-b.jumlah);
+  Plotly.newPlot('cObat', [{
+    x:d.map(r=>r.jumlah), y:d.map(r=>r.obat),
+    type:'bar', orientation:'h',
+    marker:{color:d.map((_,i)=>PAL[i%PAL.length]),line:{width:0}},
+    text:d.map(r=>fmt(r.jumlah)), textposition:'outside',
+    hovertemplate:'<b>%{y}</b><br>%{x:,.0f}<extra></extra>',
+  }], {
+    paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+    margin:{t:5,r:75,b:15,l:220},
+    xaxis:{showgrid:false,zeroline:false},
+    yaxis:{showgrid:false,tickfont:{size:11}},
+    height:Math.max(280, d.length*27),
+    font:{family:'Inter'},
+  }, {responsive:true,displayModeBar:false});
+}
+function filterObat(q) {
+  renderObat(_obat.filter(r=>r.obat&&r.obat.toLowerCase().includes(q.toLowerCase())).slice(0,50));
+}
+
+// ══════════════════════════════════════════════════════════
+// TAB 4: PRODUSEN
+// ══════════════════════════════════════════════════════════
+function loadProdusen() {
+  apiGet('/produsen').then(d => {
+    const list = d.produsen_list || [], top5 = list.slice(0,5);
+    Plotly.newPlot('cProdPie', [{
+      labels:top5.map(r=>r.produsen||'—'),
+      values:top5.map(r=>r.jumlah),
+      type:'pie', hole:.43,
+      marker:{colors:PAL.slice(0,5),line:{color:'#fff',width:2}},
+      textinfo:'none',
+      hovertemplate:'<b>%{label}</b><br>%{value:,.0f}<br>%{percent:.1%}<extra></extra>',
+    }], {
+      paper_bgcolor:'transparent',
+      margin:{t:8,r:8,b:8,l:8},
+      showlegend:true, legend:{font:{size:11}},
+      font:{family:'Inter'},
+    }, {responsive:true,displayModeBar:false});
+
+    document.getElementById('prodRows').innerHTML =
+      list.slice(0,30).map((r,i) => `
+        <div class="prop-row">
+          <div class="prop-dot" style="background:${PAL[i%PAL.length]}"></div>
+          <div class="prop-name">${r.produsen||'—'}</div>
+          <div class="text-end"><div class="prop-val">${r.persen}%</div><div class="prop-pct">${fmt(r.jumlah)} Pcs</div></div>
+        </div>`).join('');
+
+    document.getElementById('prodSel').innerHTML =
+      '<option value="">-- Pilih --</option>' +
+      (d.produsen_names||[]).map(n=>`<option value="${n}">${n}</option>`).join('');
+  });
+}
+function loadProdExp() {
+  const nama = document.getElementById('prodSel').value;
+  if (!nama) return;
+  const sep = QS?'&':'?';
+  fetch(`${API}/produsen/expired${QS}${sep}nama=${encodeURIComponent(nama)}`)
+    .then(r=>r.json()).then(d => {
+      const rows = d.data || [];
+      document.getElementById('tbProdExp').innerHTML = !rows.length
+        ? '<tr><td colspan="3" class="text-center text-muted py-3">Tidak ada data hampir expired</td></tr>'
+        : rows.map(r=>`<tr><td>${r.produsen||'-'}</td><td>${r.obat||'-'}</td><td class="text-end fw-bold text-danger">${fmt(r.jumlah)}</td></tr>`).join('');
+    });
+}
+
+// ══════════════════════════════════════════════════════════
+// TAB 5: PBF
+// ══════════════════════════════════════════════════════════
+let _pbf = [];
+function loadPBF() {
+  apiGet('/pbf').then(d => {
+    _pbf = d.pbf_list || [];
+    document.getElementById('kPbfTop').textContent   = d.top_pbf_name || '—';
+    document.getElementById('kPbfTotal').textContent = fmt(d.total_pbf);
+
+    const tp = (d.top_pbf||[]).sort((a,b)=>a.total_distribusi-b.total_distribusi);
+    Plotly.newPlot('cPBF', [{
+      x:tp.map(r=>r.total_distribusi), y:tp.map(r=>r.pbf_clean||'—'),
+      type:'bar', orientation:'h',
+      marker:{color:'#1a56db',opacity:.85,line:{width:0}},
+      text:tp.map(r=>fmt(r.total_distribusi)), textposition:'outside',
+    }], {
+      paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+      margin:{t:5,r:75,b:15,l:220},
+      xaxis:{showgrid:false,zeroline:false},
+      yaxis:{showgrid:false,tickfont:{size:11}},
+      font:{family:'Inter'},
+    }, {responsive:true,displayModeBar:false});
+
+    renderPBF(_pbf);
+  });
+}
+function renderPBF(data) {
+  document.getElementById('tbPBF').innerHTML =
+    data.slice(0,200).map(r=>`
+      <tr>
+        <td>${r.pbf_clean||'-'}</td>
+        <td class="text-end">${fmt(r.total_distribusi)}</td>
+        <td class="text-end">${fmt(r.total_transaksi)}</td>
+      </tr>`).join('');
+}
+function searchPBF() {
+  const q = document.getElementById('pbfQ').value.toLowerCase();
+  renderPBF(_pbf.filter(r=>r.pbf_clean&&r.pbf_clean.toLowerCase().includes(q)));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pbfQ').addEventListener('keyup', e => { if(e.key==='Enter') searchPBF(); });
+  document.getElementById('obatQ').addEventListener('input', function(){ filterObat(this.value); });
+});
+
+// ══════════════════════════════════════════════════════════
+// TAB 6: SARANA
+// ══════════════════════════════════════════════════════════
+let _sarDetail = [];
+function loadSarana() {
+  apiGet('/sarana').then(d => {
+    const list = d.sarana_list || [];
+    _sarDetail = d.detail_sarana || [];
+
+    document.getElementById('kSarJenis').textContent = fmt(d.total_jenis_sarana);
+    document.getElementById('kSarTop').textContent   = d.sarana_terbanyak || '—';
+    document.getElementById('kSarMax').textContent   = fmt(d.distribusi_terbesar);
+
+    const sb = [...list].sort((a,b)=>a.jumlah-b.jumlah);
+    Plotly.newPlot('cSarBar', [{
+      x:sb.map(r=>r.jumlah), y:sb.map(r=>r.jenis_sarana||'—'),
+      type:'bar', orientation:'h',
+      marker:{color:PAL.slice(0,sb.length),line:{width:0}},
+      text:sb.map(r=>fmt(r.jumlah)), textposition:'outside',
+    }], {
+      paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+      margin:{t:5,r:75,b:15,l:160},
+      xaxis:{showgrid:false,zeroline:false},
+      yaxis:{showgrid:false},
+      font:{family:'Inter'},
+    }, {responsive:true,displayModeBar:false});
+
+    Plotly.newPlot('cSarPie', [{
+      labels:list.map(r=>r.jenis_sarana||'—'),
+      values:list.map(r=>r.jumlah),
+      type:'pie', hole:.43,
+      marker:{colors:PAL.slice(0,list.length),line:{color:'#fff',width:2}},
+      textinfo:'none',
+      hovertemplate:'<b>%{label}</b><br>%{value:,.0f}<br>%{percent:.1%}<extra></extra>',
+    }], {
+      paper_bgcolor:'transparent',
+      margin:{t:8,r:8,b:8,l:8},
+      showlegend:true,legend:{font:{size:11}},
+      font:{family:'Inter'},
+    }, {responsive:true,displayModeBar:false});
+
+    renderSarDetail(_sarDetail);
+  });
+}
+function renderSarDetail(data) {
+  document.getElementById('tbSarDetail').innerHTML =
+    data.slice(0,300).map(r=>`
+      <tr>
+        <td><span class="badge" style="background:#dbeafe;color:#1e40af;font-size:10.5px">${r.jenis_sarana||'-'}</span></td>
+        <td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.apotek||'-'}</td>
+        <td>${r.kota||'-'}</td>
+        <td class="text-end">${fmt(r.total_distribusi)}</td>
+        <td class="text-end">${fmt(r.transaksi)}</td>
+      </tr>`).join('');
+}
+function filterSarDetail(q) {
+  renderSarDetail(_sarDetail.filter(r =>
+    (r.apotek||'').toLowerCase().includes(q.toLowerCase()) ||
+    (r.jenis_sarana||'').toLowerCase().includes(q.toLowerCase())
+  ));
+}
+
+// ══════════════════════════════════════════════════════════
+// TAB 7: CARI SARANA
+// ══════════════════════════════════════════════════════════
+let _stimer=null, _curApotek='', _sdObatAll=[];
+
+function onSarSearch(val) {
+  clearTimeout(_stimer);
+  if (val.length < 3) { document.getElementById('sarDrop').style.display='none'; return; }
+  _stimer = setTimeout(() => {
+    const sep = QS?'&':'?';
+    fetch(`${API}/sarana/search${QS}${sep}q=${encodeURIComponent(val)}`)
+      .then(r=>r.json()).then(d => {
+        const el = document.getElementById('sarDrop');
+        const res = d.results || [];
+        el.innerHTML = !res.length
+          ? '<div class="search-item text-muted">Tidak ada hasil</div>'
+          : res.slice(0,30).map(r => {
+              const hi = r.replace(new RegExp(val,'gi'), m=>`<mark>${m}</mark>`);
+              return `<div class="search-item" onclick="pickApotek('${r.replace(/'/g,"\\'")}')">${hi}</div>`;
+            }).join('');
+        el.style.display = 'block';
+      });
+  }, 280);
+}
+
+function pickApotek(apotek) {
+  _curApotek = apotek;
+  document.getElementById('sarQ').value = apotek;
+  document.getElementById('sarDrop').style.display = 'none';
+  document.getElementById('sarHint').style.display = 'none';
+  document.getElementById('sarDetail').style.display = 'block';
+  document.getElementById('sarTitle').textContent = apotek;
+  document.getElementById('trxSec').style.display = 'none';
+
+  const sep = QS?'&':'?';
+  fetch(`${API}/sarana/detail${QS}${sep}apotek=${encodeURIComponent(apotek)}`)
+    .then(r=>r.json()).then(d => {
+      const k = d.kpi || {};
+      document.getElementById('sdTrx').textContent   = fmt(k.total_transaksi);
+      document.getElementById('sdQty').textContent   = fmt(k.total_distribusi);
+      document.getElementById('sdJObat').textContent = fmt(k.jenis_obat);
+      document.getElementById('sdExp').textContent   = fmt(k.hampir_expired);
+
+      _sdObatAll = d.obat_list || [];
+      renderSdObat(_sdObatAll);
+
+      const t10 = d.top10_chart || [];
+      Plotly.newPlot('cSdTop', [{
+        x:t10.map(r=>r.total_distribusi), y:t10.map(r=>r.obat||'—'),
+        type:'bar', orientation:'h',
+        marker:{color:'#1a56db',opacity:.85,line:{width:0}},
+        text:t10.map(r=>fmt(r.total_distribusi)), textposition:'outside',
+      }], {
+        paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+        margin:{t:5,r:70,b:15,l:190},
+        xaxis:{showgrid:false,zeroline:false},
+        yaxis:{showgrid:false,tickfont:{size:11}},
+        font:{family:'Inter'},
+      }, {responsive:true,displayModeBar:false});
+    });
+}
+
+function renderSdObat(data) {
+  document.getElementById('tbSdObat').innerHTML =
+    data.slice(0,200).map(r=>`
+      <tr>
+        <td style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obat||'-'}</td>
+        <td class="text-end">${fmt(r.total_distribusi)}</td>
+        <td class="text-end">${fmt(r.jumlah_transaksi)}</td>
+        <td><button class="btn btn-sm btn-outline-primary" style="font-size:11px;padding:2px 8px"
+             onclick="loadTrx('${(r.obat||'').replace(/'/g,"\\'")}')">Detail</button></td>
+      </tr>`).join('');
+}
+function filterSdObat(q) {
+  renderSdObat(_sdObatAll.filter(r=>(r.obat||'').toLowerCase().includes(q.toLowerCase())));
+}
+
+function loadTrx(obat) {
+  document.getElementById('trxSec').style.display = 'block';
+  document.getElementById('trxTitle').textContent = `Riwayat — ${obat}`;
+  document.getElementById('trxSub').textContent   = `di ${_curApotek}`;
+
+  const sep = QS?'&':'?';
+  fetch(`${API}/sarana/transaksi${QS}${sep}apotek=${encodeURIComponent(_curApotek)}&obat=${encodeURIComponent(obat)}`)
+    .then(r=>r.json()).then(d => {
+      const k = d.kpi || {};
+      document.getElementById('stQty').textContent  = fmt(k.total_distribusi) + ' Pcs';
+      document.getElementById('stTrx').textContent  = fmt(k.total_transaksi);
+      document.getElementById('stProd').textContent = fmt(k.jumlah_produsen);
+      document.getElementById('stExp').textContent  = fmt(k.hampir_expired);
+
+      document.getElementById('tbTrx').innerHTML =
+        (d.transaksi||[]).slice(0,100).map(r=>`
+          <tr>
+            <td>${r.tanggal||'-'}</td>
+            <td class="text-end fw-bold">${fmt(r.jumlah)}</td>
+            <td style="font-size:11.5px">${r.produsen||'-'}</td>
+            <td style="font-size:11.5px">${r.pbf_clean||'-'}</td>
+            <td style="font-size:11.5px">${r.expired||'-'}</td>
+          </tr>`).join('');
+
+      const pbf = d.pbf_chart || [];
+      if (pbf.length) {
+        Plotly.newPlot('cPbfChart', [{
+          x:pbf.map(r=>r.total), y:pbf.map(r=>r.pbf_clean||'—'),
+          type:'bar', orientation:'h',
+          marker:{color:'#0e9f6e',opacity:.8,line:{width:0}},
+          text:pbf.map(r=>fmt(r.total)), textposition:'outside',
+        }], {
+          paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+          margin:{t:20,r:70,b:15,l:180},
+          xaxis:{showgrid:false,zeroline:false},
+          yaxis:{showgrid:false,tickfont:{size:11}},
+          title:{text:`PBF — ${obat}`,font:{size:12}},
+          height:Math.max(180, pbf.length*38),
+          font:{family:'Inter'},
+        }, {responsive:true,displayModeBar:false});
+      }
+    });
+}
+
+function clearSarSearch() {
+  document.getElementById('sarQ').value = '';
+  document.getElementById('sarDrop').style.display = 'none';
+  document.getElementById('sarDetail').style.display = 'none';
+  document.getElementById('sarHint').style.display = 'block';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#sarQ') && !e.target.closest('#sarDrop'))
+    document.getElementById('sarDrop').style.display = 'none';
+});
+
+// ══════════════════════════════════════════════════════════
+// TAB 8: UNDUH
+// ══════════════════════════════════════════════════════════
+function setMode(label, val) {
+  document.querySelectorAll('#mClean,#mTerbaru').forEach(l=>l.classList.remove('on'));
+  label.classList.add('on');
+  document.querySelector(`input[name="dlMode"][value="${val}"]`).checked = true;
+  document.getElementById('nWrap').style.display = val==='terbaru' ? 'block' : 'none';
+}
+function toggleCol(label) {
+  const cb = label.querySelector('input');
+  cb.checked = !cb.checked;
+  label.classList.toggle('on', cb.checked);
+}
+function selAll() { document.querySelectorAll('.cbcol').forEach(cb=>{cb.checked=true;cb.closest('label').classList.add('on');}); }
+function clrAll() { document.querySelectorAll('.cbcol').forEach(cb=>{cb.checked=false;cb.closest('label').classList.remove('on');}); }
+
+function _exportURL(base) {
+  const mode = document.querySelector('input[name="dlMode"]:checked')?.value || 'cleaned';
+  const n    = document.getElementById('nRows').value || 1000;
+  const cols = [...document.querySelectorAll('.cbcol:checked')].map(c=>`cols=${encodeURIComponent(c.value)}`).join('&');
+  const sep  = QS ? '&' : '?';
+  return `${base}${QS}${sep}mode=${mode}&n=${n}&${cols}`;
+}
+
+function doPreview() {
+  document.getElementById('dlInfo').textContent = 'Memuat...';
+  fetch(_exportURL(`${API}/export/preview`))
+    .then(r=>r.json()).then(d => {
+      document.getElementById('dlInfo').textContent = `${fmt(d.total)} baris, ${(d.columns||[]).length} kolom`;
+      document.getElementById('pvTotal').textContent = fmt(d.total);
+      document.getElementById('pvKol').textContent   = (d.columns||[]).length;
+      document.getElementById('pvSec').style.display = 'block';
+      const cols = d.columns || [];
+      document.getElementById('pvHead').innerHTML =
+        '<tr>' + cols.map(c=>`<th>${c}</th>`).join('') + '</tr>';
+      document.getElementById('pvBody').innerHTML =
+        (d.rows||[]).map(r =>
+          '<tr>' + cols.map(c=>`<td style="white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis">${r[c]??''}</td>`).join('') + '</tr>'
+        ).join('');
+    });
+}
+
+function doDownload() {
+  window.location.href = _exportURL('/analytics/export/csv');
+}
+</script>
+{% endblock %}

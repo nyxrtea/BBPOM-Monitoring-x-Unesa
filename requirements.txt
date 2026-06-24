@@ -1,0 +1,34 @@
+# =========================================================
+# requirements.txt
+# Dependency lengkap untuk BPOM Monitor — disusun berdasarkan
+# audit import di seluruh file project (routes, services, models,
+# ML modules, CLI commands).
+# =========================================================
+
+# ── Web framework ──────────────────────────────────────────
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Werkzeug==3.0.4
+
+# ── Database ────────────────────────────────────────────────
+SQLAlchemy==2.0.35
+psycopg2-binary==2.9.9
+alembic==1.13.3
+
+# ── Environment / config ────────────────────────────────────
+python-dotenv==1.0.1
+
+# ── Data processing & ML ─────────────────────────────────────
+pandas==2.2.3
+numpy==1.26.4
+scikit-learn==1.5.2
+scipy==1.13.1
+
+# ── Production WSGI server ───────────────────────────────────
+# Flask dev server (app.run()) TIDAK dipakai di production — Render
+# menjalankan app lewat Gunicorn (lihat Procfile / render.yaml).
+gunicorn==23.0.0
+
+# ── CLI helper (untuk 'flask create-user') ───────────────────
+click==8.1.7
